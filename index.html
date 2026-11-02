@@ -1,0 +1,483 @@
+<meta charset="utf-8">
+<title>Azras Welt</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#8e5bd6">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Fredoka:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#f3ecfa; --card:#ffffff; --ink:#3a2f4a; --muted:#7a6e8a; --accent:#9b7fd1; --accent-ink:#ffffff; --shadow:0 6px 18px rgba(58,47,74,.14); --r:22px;
+  --font-ui:"Fredoka",system-ui,sans-serif; --font-read:"Andika","Fredoka",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ color-scheme:dark; --bg:#231d2e; --card:#2f2740; --ink:#f2ecfa; --muted:#b5a9c6; --accent:#b49be0; --accent-ink:#231d2e; } }
+:root[data-theme="dark"]{ color-scheme:dark; --bg:#231d2e; --card:#2f2740; --ink:#f2ecfa; --muted:#b5a9c6; --accent:#b49be0; --accent-ink:#231d2e; }
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-ui);overflow:hidden;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+#app{position:fixed;inset:0;display:grid;place-items:center;padding:16px}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:32px 40px;text-align:center}
+h1{margin:0 0 24px;font-weight:600;font-size:44px}
+button{font:inherit;font-size:24px;border:0;border-radius:16px;padding:14px 32px;background:var(--accent);color:var(--accent-ink);cursor:pointer;min-height:56px}
+button:disabled{opacity:.5;cursor:default}
+#note{position:fixed;z-index:10;left:16px;right:16px;bottom:16px;margin:0;text-align:center;font-family:var(--font-read);font-size:20px;color:var(--muted)}
+/* Welt */
+#world{position:fixed;inset:0;overflow-y:auto;background:linear-gradient(#e3f4ff,#f6efff);user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#world>svg{width:100%;height:100%;display:block}
+.ui{font-family:var(--font-ui)} .lesen{font-family:var(--font-read)}
+.hot{cursor:pointer}
+.bub{display:inline-block;font-family:var(--font-read);font-size:29px;line-height:1.28;padding:14px 22px;max-width:100%;box-sizing:border-box;color:#3b2b52;background:#fff;border-radius:30px;box-shadow:0 10px 28px rgba(70,50,140,.18)}
+.bub .who{display:block;font-family:var(--font-ui);font-size:19px;opacity:.65;margin-bottom:2px}
+.ping{animation:ping 1.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.schlaf{animation:schlaf 2.4s ease-in-out infinite}
+@keyframes schlaf{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes ping{50%{transform:translateY(-8px)}}
+/* Katzenwahl */
+.pick{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:18px;padding:16px;color:#3b2b52}
+.pickcat{width:min(320px,60vw);height:auto}
+.pick h1{margin:0;font-weight:600;font-size:44px}
+.farben{display:flex;flex-wrap:wrap;justify-content:center;gap:16px}
+.farbe{width:72px;height:72px;min-height:72px;padding:0;border-radius:50%;border:4px solid #fff;box-shadow:0 4px 12px rgba(70,50,140,.2)}
+.farbe.on{border-color:#8e5bd6;box-shadow:0 0 0 4px #8e5bd6}
+.name{display:flex;flex-direction:column;align-items:center;gap:8px;font-family:var(--font-read);font-size:28px}
+.name input{user-select:text;-webkit-user-select:text;font:inherit;font-size:32px;text-align:center;width:min(360px,80vw);min-height:60px;border:3px solid #c9b6ea;border-radius:16px;padding:6px 12px;color:#3b2b52;background:#fff}
+.fertig{background:#8e5bd6;color:#fff}
+.katzebub{margin:0}
+/* Eltern-Bereich (Englisch): Zahnrad oben links über der Knopfleiste (dort liegt nichts zum Tippen), lange drücken */
+#gear{position:fixed;z-index:11;left:16px;top:16px;width:56px;height:56px;min-height:56px;padding:0;border-radius:50%;font-size:28px;line-height:56px;background:transparent;color:var(--muted);opacity:.35;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+section#eltern{position:fixed;z-index:20;inset:0;overflow-y:auto;background:var(--bg);color:var(--ink);font:17px/1.45 system-ui,sans-serif}
+section#eltern .ewrap{max-width:960px;margin:0 auto;padding:16px}
+section#eltern header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+section#eltern h1{margin:0;font-size:28px} section#eltern h2{margin:28px 0 8px;font-size:20px}
+section#eltern .eb{font:inherit;font-size:16px;min-height:44px;padding:8px 16px;border-radius:10px}
+section#eltern .eb:disabled{opacity:.5}
+section#eltern .erow{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap}
+section#eltern label{display:flex;flex-direction:column;gap:4px}
+section#eltern select{font:inherit;min-height:44px;padding:4px 8px;border-radius:8px}
+section#eltern table{width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;overflow:hidden}
+section#eltern th,section#eltern td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid rgba(120,100,150,.18)}
+section#eltern summary{cursor:pointer;font-weight:600;margin:10px 0}
+section#eltern .muted{color:var(--muted)} section#eltern .ok{color:#2f7d4f;font-weight:600}
+/* Arbeitskarte einer Zeit (spiel.js): rechts neben dem Diorama, oben der Nachbar, unten die Katze; hochkant unten */
+#werk{position:fixed;z-index:5;top:16px;right:16px;bottom:16px;left:38%;display:flex}
+#werk .wk{flex:1;display:flex;flex-direction:column;gap:12px;overflow-y:auto;padding:16px;border-radius:var(--r);background:rgba(255,255,255,.7);box-shadow:var(--shadow)}
+#werk .bub{font-size:26px;align-self:stretch;margin:0}
+#werk .wk,#buch .wk{position:relative}
+#werk .wk:has(.aus:not([hidden])){padding-top:80px}
+.wk-knoepfe{position:absolute;top:12px;left:12px;right:12px;z-index:2;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px}
+.wk .aus{min-height:52px;padding:8px 20px;border-radius:14px;border:2px solid #c6a4ef;background:#fff;color:#8e5bd6;font-family:var(--font-ui);font-size:20px;cursor:pointer}
+#werk .wk-c{background:#f6efff;border:3px solid #c6a4ef;margin-top:auto}
+#wkBuehne{display:flex;flex-direction:column}
+#werk .zeigen{padding:24px;display:flex;flex-direction:column;gap:12px}
+#werk .satz,#werk .merk{font-family:var(--font-read);font-size:32px;line-height:1.35;margin:0;color:#3b2b52}
+#werk .merk.zeile{text-align:left;background:#fff6d8;color:#3b2b52;border:2px solid #f2c94c;font-size:26px;min-height:56px}
+#werk h2{margin:0;font-weight:600;font-size:32px;color:#3b2b52}
+@media (orientation:portrait){ #werk{left:16px;top:42vh} }
+/* Bücherregal und Buch (regal.js): ganze Seite über der Welt, Text groß in Andika */
+#buch{position:fixed;z-index:6;inset:16px;display:flex}
+#buch .wk{flex:1;display:flex;flex-direction:column;gap:12px;overflow-y:auto;padding:16px;border-radius:var(--r);background:#fffaf2;box-shadow:var(--shadow)}
+#buch .bub{font-size:26px;align-self:stretch;margin:0 0 0;margin-top:auto}
+#buchS{display:flex;flex-direction:column;flex:1}
+#buch h2{margin:0 0 12px;font-weight:600;font-size:36px;color:#3b2b52;text-align:center}
+/* Regal (Ticket 11): Bücher mit Umschlag stehen auf Holzbrettern */
+#buch .wk:has(.regal),#buch .wk:has(.buchoffen){background:linear-gradient(#c79b6d,#b5875a)}
+#buch .wk:has(.regal) h2{color:#fff8ec;text-shadow:0 2px 0 rgba(0,0,0,.18)}
+#buch .regal{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:36px 26px;padding:8px 8px 0;
+  background:repeating-linear-gradient(to bottom,transparent 0,transparent 316px,#8a5a3c 316px,#8a5a3c 334px,transparent 334px,transparent 352px)}
+#buch .buchkarte{position:relative;display:flex;flex-direction:column;height:316px;padding:0;border:0;border-radius:4px 12px 12px 4px;overflow:hidden;background:#fff;color:#3b2b52;
+  box-shadow:inset 10px 0 0 rgba(0,0,0,.14),0 8px 14px rgba(40,20,10,.35);font-family:var(--font-read);font-size:21px;line-height:1.2;cursor:pointer}
+#buch .buchkarte .umschlag{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:#f4ecdd;overflow:hidden}
+#buch .buchkarte .umschlag img,#buch .buchkarte .umschlag svg{width:100%;height:100%;object-fit:cover;display:block}
+#buch .buchkarte .emoji{font-size:72px}
+#buch .buchkarte .titel{padding:10px 10px 12px 18px;background:#fffaf2;font-weight:600;text-align:center}
+#buch .buchkarte .zeichen{position:absolute;top:-4px;right:14px;font-size:40px}
+#buch .buchkarte.eigen .umschlag{background:#f6efff}
+/* Aufgeschlagenes Buch: links Bild, rechts Text; hochkant eine Seite */
+#buch .buchoffen{position:relative;flex:1;display:flex;min-height:0;width:100%;max-width:1760px;margin:0 auto;filter:drop-shadow(0 12px 22px rgba(40,20,10,.35));touch-action:pan-y}
+#buch .blatt{flex:1 1 0;min-width:0;position:relative;display:flex;flex-direction:column;align-items:center;gap:22px;padding:34px 52px 58px;background:#fffdf7}
+#buch .blatt.links{border-radius:16px 3px 3px 16px;background:linear-gradient(to left,#e6dccb 0,#fffdf7 46px)}
+#buch .blatt.rechts{border-radius:3px 16px 16px 3px;background:linear-gradient(to right,#e6dccb 0,#fffdf7 46px)}
+#buch .blatt.einzeln{border-radius:16px}
+#buch .bildflaeche{flex:1 1 0;width:100%;min-height:0;display:flex;align-items:center;justify-content:center}
+#buch .bildflaeche.klein{flex:0 0 30%}
+#buch .bildflaeche img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;user-select:none}
+#buch .bildflaeche svg.szene{width:100%;height:100%;border-radius:10px}
+#buch .bildflaeche .emoji{font-size:150px}
+#buch .textflaeche{flex:0 0 auto;display:flex;flex-direction:column;gap:10px;width:100%;max-width:820px}
+#buch .textflaeche .text{font-family:var(--font-read);font-size:38px;line-height:1.5;color:#2b2140;margin:0}
+#buch .mittel .text{font-size:32px}
+#buch .lang .text{font-size:27px}
+#buch .lang .bildflaeche{flex-basis:0;flex-grow:.7}
+#buch .lizenz .text{font-size:20px;line-height:1.4}
+#buch .klein{font-size:16px;color:#75688a;word-break:break-all}
+#buch .nr{position:absolute;bottom:16px;font-family:var(--font-read);font-size:20px;color:#a89c8a}
+#buch .links .nr{left:30px} #buch .rechts .nr{right:30px}
+#buch .ecke{position:absolute;top:0;bottom:0;width:84px;padding:0;border:0;background:transparent;cursor:pointer;z-index:2}
+#buch .ecke.rechts{right:0} #buch .ecke.links{left:0}
+#buch .ecke::after{content:"";position:absolute;bottom:0;width:78px;height:78px;box-shadow:0 0 8px rgba(0,0,0,.12)}
+#buch .ecke.rechts::after{right:0;border-radius:0 0 16px 0;background:linear-gradient(315deg,transparent 50%,#efe5d2 50%,#fffaf0)}
+#buch .ecke.links::after{left:0;border-radius:0 0 0 16px;background:linear-gradient(45deg,transparent 50%,#efe5d2 50%,#fffaf0)}
+#buch .dreht-vor .blatt.rechts{animation:blattVor .5s ease-out;transform-origin:left center}
+#buch .dreht-zurueck .blatt.links{animation:blattZurueck .5s ease-out;transform-origin:right center}
+@keyframes blattVor{from{transform:perspective(1800px) rotateY(-80deg);opacity:.35}to{transform:none;opacity:1}}
+@keyframes blattZurueck{from{transform:perspective(1800px) rotateY(80deg);opacity:.35}to{transform:none;opacity:1}}
+#buch .einzeln.dreht-vor .blatt{animation:blattVor .5s ease-out;transform-origin:left center}
+#buch .einzeln.dreht-zurueck .blatt{animation:blattZurueck .5s ease-out;transform-origin:right center}
+#buch .einzeln .nr{right:30px;left:auto}
+#buch .buchseite{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:8px 24px}
+#buch .buchseite .bild{font-size:96px;line-height:1.1}
+#buch .buchseite .text{font-family:var(--font-read);font-size:40px;line-height:1.5;color:#2b2140;max-width:1100px;margin:0}
+#buch .buchseite.lizenz .text{font-size:24px;line-height:1.4}
+#buch .buchtitel{font-size:34px;font-weight:600;margin:0;color:#8e5bd6}
+#buch .kapitel{font-size:26px;margin:0;color:#75688a}
+#buch .wort{cursor:pointer;border-radius:8px;padding:0 2px}
+#buch .wort:active{background:#ffe066}
+#buch #buchA{display:flex;flex-direction:column}
+/* Spiele zwischendurch (spiele.js, Ticket 13) */
+#spiele{position:fixed;z-index:6;inset:16px;display:flex}
+#spiele .wk{flex:1;display:flex;flex-direction:column;gap:12px;overflow-y:auto;padding:16px;border-radius:var(--r);background:#fffaf2;box-shadow:var(--shadow);position:relative}
+#spiele .bub{font-size:26px;align-self:stretch;margin:0;margin-top:auto;background:#f6efff;border:3px solid #c6a4ef}
+#spS{display:flex;flex-direction:column;flex:1;min-height:0;gap:12px}
+#spiele h2{margin:0 0 8px;font-weight:600;font-size:36px;color:#3b2b52;text-align:center}
+#spiele .spielwahl{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;padding:8px}
+#spiele .spielkarte{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px;border:0;border-radius:22px;background:#fff;box-shadow:0 6px 18px rgba(70,50,140,.18);cursor:pointer;font-family:var(--font-ui);font-size:30px;color:#3b2b52}
+#spiele .spielkarte svg{width:100%;max-width:320px;height:auto}
+.labyrinth{flex:1;min-height:0;display:flex}
+.labyrinth svg{width:100%;height:100%;touch-action:none}
+.labyrinth .tipp{animation:pulsen 1s ease-in-out infinite}
+@keyframes pulsen{50%{opacity:.35}}
+.wortblume{flex:1;display:flex;flex-direction:column;align-items:center;gap:18px}
+.wb-oben{display:flex;align-items:center;gap:40px}
+.wb-bild{font-size:150px;line-height:1}
+.wb-blume svg{width:240px;height:170px}
+.wb-wort{display:flex;gap:12px}
+.wb-wort .lucke{display:inline-flex;align-items:flex-end;justify-content:center;min-width:64px;height:84px;border-bottom:6px solid #8e5bd6;font-family:var(--font-read);font-size:64px;color:#2b2140}
+.wb-tasten{display:grid;grid-template-columns:repeat(10,minmax(56px,76px));gap:10px}
+.wb-tasten .taste{min-height:64px;border:0;border-radius:14px;background:#fff;box-shadow:0 3px 8px rgba(70,50,140,.18);font-family:var(--font-read);font-size:32px;color:#3b2b52;cursor:pointer}
+.wb-tasten .taste:disabled{opacity:.3;cursor:default}
+.wb-tasten .taste.drin:disabled{opacity:1;background:#c6f0d0}
+.aquarium{flex:1;min-height:0;display:flex;border-radius:18px;overflow:hidden}
+.aquarium svg{width:100%;height:100%;touch-action:none;cursor:pointer}
+.aquarium{position:relative}
+.aq-panel{position:absolute;inset:0;display:flex;flex-direction:column;gap:12px;padding:84px 18px 18px;background:rgba(255,250,240,.96);overflow:auto}
+.aq-panel[hidden]{display:none}
+.aq-waren{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:16px}
+.aq-ware{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px;border:0;border-radius:18px;background:#fff;box-shadow:0 4px 12px rgba(70,50,140,.16);font-family:var(--font-ui);font-size:24px;color:#3b2b52;cursor:pointer;min-height:48px}
+.aq-ware svg{width:110px;height:110px;background:#cfeefc;border-radius:14px}
+.aq-ware .preis{font-size:22px;color:#8e5bd6}
+.aq-ware.blass{opacity:.45}
+.aq-name{display:flex;flex-direction:column;align-items:center;gap:24px}
+.aq-name .name-text{min-width:320px;min-height:84px;border-bottom:6px solid #8e5bd6;font-family:var(--font-read);font-size:64px;color:#2b2140;text-align:center}
+#spiele .btn.an{background:#f2c94c;color:#3b2b52}
+.memory{flex:1;min-height:0;display:grid;grid-template-columns:repeat(var(--spalten),1fr);gap:10px;align-content:center;max-width:min(1800px,calc((100vh - 250px) * var(--spalten) / var(--zeilen)));margin:0 auto;width:100%}
+.memory.zu2{max-width:min(1800px,calc((100vh - 330px) * var(--spalten) / var(--zeilen)))}
+.mem-wahl{display:flex;flex-direction:column;gap:22px;align-items:center;margin:auto}
+.mem-reihe{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center}
+.mem-reihe .ui{min-width:150px;font-size:28px;color:#3b2b52}
+.mem-leiste{display:flex;justify-content:center;gap:24px;padding:4px 0 10px}
+.mem-spieler{display:flex;align-items:center;gap:12px;padding:8px 20px;border-radius:999px;background:#fff;border:4px solid transparent;font-family:var(--font-ui);font-size:28px;color:#3b2b52}
+.mem-spieler.dran{border-color:#f2c94c;box-shadow:0 0 0 6px rgba(242,201,76,.3)}
+.mem-spieler .stapel{display:flex}
+.mem-spieler .stapel i{width:18px;height:26px;margin-left:-8px;border-radius:4px;background:#8e5bd6;border:2px solid #fff}
+.mem-karte{position:relative;aspect-ratio:1;min-height:48px;border:0;padding:0;border-radius:14px;background:none;cursor:pointer;perspective:600px}
+.mem-karte .vorne,.mem-karte .hinten{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:14px;backface-visibility:hidden;transition:transform .35s}
+.mem-karte .vorne{background:#fff;box-shadow:0 3px 10px rgba(70,50,140,.18);font-size:clamp(34px,5vw,64px);transform:rotateY(180deg)}
+.mem-karte.wort .vorne{font-family:var(--font-read);font-size:clamp(20px,2.3vw,34px);color:#2b2140}
+.mem-karte .hinten svg{width:100%;height:100%}
+.mem-karte.auf .vorne{transform:rotateY(0)}
+.mem-karte.auf .hinten{transform:rotateY(180deg)}
+.mem-karte.gefunden .vorne{background:#c6f0d0}
+.wb-wort.lang{gap:6px}
+.wb-wort.lang .lucke{min-width:44px;height:70px;font-size:48px;border-bottom-width:5px}
+#spiele .laden,#spiele .aufgabe-fuss{gap:20px}
+#spiele .aufgabe-fuss .btn{font-family:var(--font-ui);font-size:24px;padding:12px 28px;border-radius:14px;border:0;background:#8e5bd6;color:#fff;cursor:pointer;min-height:60px}
+#spiele .aufgabe-fuss .btn.ghost{background:#fff;color:#8e5bd6;border:2px solid #c6a4ef}
+@media (orientation:portrait){ .wb-tasten{grid-template-columns:repeat(6,minmax(64px,1fr))} .wb-oben{gap:20px} }
+
+/* Küche (Ticket 22): Rezeptkarten, Kochstelle, Gäste, Hildes Laden */
+#kochen,#pflege,#kiste,#beet,#malen,#puppenhaus{position:fixed;z-index:6;inset:16px;display:flex}
+#kochen .wk,#pflege .wk,#kiste .wk,#beet .wk,#malen .wk,#puppenhaus .wk{flex:1;display:flex;flex-direction:column;gap:12px;overflow-y:auto;padding:16px;border-radius:var(--r);background:#fff8ee;box-shadow:var(--shadow);position:relative}
+#kochen .aus,#pflege .aus,#kiste .aus,#beet .aus,#malen .aus,#puppenhaus .aus{position:absolute;top:12px;right:12px;z-index:2}
+#kochen .bub,#pflege .bub,#kiste .bub,#beet .bub,#malen .bub,#puppenhaus .bub{font-size:26px;align-self:stretch;margin:0;margin-top:auto;background:#f6efff;border:3px solid #c6a4ef}
+#koS,#pfS,#kiS,#beS{display:flex;flex-direction:column;flex:1;min-height:0;gap:12px}
+#kochen h2,#kiste h2,#beet h2,#malen h2,#puppenhaus h2{margin:0 0 8px;font-weight:600;font-size:36px;color:#3b2b52;text-align:center}
+#kochen .rezepte,#kochen .regalwaren,#kochen .gaeste,#kiste .regalwaren{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;padding:8px}
+#kochen .regalwaren,#kiste .regalwaren{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+#kochen .rezept,#kochen .ware,#kochen .gast,#kiste .ware{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;border:0;border-radius:22px;background:#fff;box-shadow:0 6px 18px rgba(70,50,140,.18);cursor:pointer;font-family:var(--font-ui);color:#3b2b52;min-height:60px}
+#kochen .rezept svg{width:100%;max-width:240px;height:auto}
+#kochen .ware svg{width:90px;height:90px}
+#kochen .gast svg{width:150px;height:170px}
+#kochen .titel,#kochen .gast span,#kiste .titel{font-size:28px}
+#kochen .zutaten{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+#kochen .zutat{display:inline-flex;align-items:center;gap:4px;font-size:19px;padding:2px 10px 2px 2px;border-radius:999px;background:#eef8ea}
+#kochen .zutat.fehlt{background:#fde9ee}
+#kochen .zutat svg{width:30px;height:30px}
+#kochen .preis,#kiste .preis{font-size:24px;color:#7a5a10}
+#kochen .hast{font-size:18px;color:#6b5a88}
+#kochen .ware:disabled,#kiste .ware:disabled{opacity:.45;cursor:default}
+#kochen .geldbeutel,#kiste .geldbeutel{text-align:center;font-family:var(--font-ui);font-size:24px;margin:0}
+#kochen .kochstelle,#pflege .kochstelle,#beet .kochstelle,#malen .kochstelle,#puppenhaus .kochstelle{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+#kochen .kochstelle svg,#pflege .kochstelle svg,#beet .kochstelle svg,#malen .kochstelle svg,#puppenhaus .kochstelle svg{width:100%;height:100%;max-height:62vh;touch-action:none}
+#kochen .zieh{cursor:grab}
+#kochen .aufgabe-fuss,#pflege .aufgabe-fuss{display:flex;justify-content:center}
+#kochen .aufgabe-fuss .btn,#pflege .aufgabe-fuss .btn{font-family:var(--font-ui);font-size:24px;padding:12px 28px;border-radius:14px;border:0;background:#8e5bd6;color:#fff;cursor:pointer;min-height:60px}
+.flamme{animation:schlaf .5s ease-in-out infinite}
+#pflege .wk{background:#f7f2ff}
+#pflege .pflege{gap:20px}
+#pflege .btn.an{background:#f2c94c;color:#3b2b52}
+.herz{animation:herz 1.6s ease-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes herz{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-40px);opacity:.2}}
+#kiste .wk{background:#fff4f8}
+#kiste .bild svg{width:110px;height:110px}
+#kiste .btn.klein{font-family:var(--font-ui);font-size:20px;padding:10px 18px;border-radius:12px;border:0;background:#8e5bd6;color:#fff;cursor:pointer;min-height:52px}
+#kiste .leer{text-align:center;font-family:var(--font-ui);font-size:22px;color:#6b5a88}
+#beet .wk{background:#f3fbef}
+#beet .toepfe{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+#beet .topf{display:flex;flex-direction:column;align-items:center;gap:10px}
+#beet .titel{font-family:var(--font-ui);font-size:26px;color:#3b2b52}
+#beet .hinweis{font-family:var(--font-ui);font-size:20px;color:#4e9a4a}
+#beet .btn.klein{font-family:var(--font-ui);font-size:22px;padding:10px 18px;border-radius:12px;border:0;background:#4e9a4a;color:#fff;cursor:pointer;min-height:52px;min-width:150px}
+#beet .btn.hell{background:#c97a3e}
+.tropfen{animation:tropfen .7s ease-in infinite}
+@keyframes tropfen{0%{transform:translateY(0);opacity:1}100%{transform:translateY(60px);opacity:0}}
+/* Ticket 27: Malen und Puppenhaus */
+#malen .wk{background:#fff4f8}
+#puppenhaus .wk{background:#f4f0ff}
+#malen .leinwand{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+#malen canvas{max-width:100%;max-height:52vh;aspect-ratio:800/520;background:#fff;border-radius:14px;box-shadow:var(--shadow);touch-action:none;cursor:crosshair}
+#malen .farben,#malen .werkzeug,#puppenhaus .werkzeug{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center}
+#malen .farbe{width:52px;height:52px;padding:0;min-height:52px;border-radius:50%;border:4px solid #fff;box-shadow:0 0 0 2px #d9cbe9;cursor:pointer;font-size:22px;color:#4b3a6e}
+#malen .farbe.an,#malen .dicke.an{box-shadow:0 0 0 5px #8e5bd6}
+#malen .dicke{width:56px;height:56px;padding:0;min-height:56px;border-radius:14px;border:0;background:#fff;box-shadow:0 0 0 2px #d9cbe9;display:flex;align-items:center;justify-content:center;cursor:pointer}
+#malen .dicke .punkt{display:block;flex:none;border-radius:50%;background:#2b2140}
+#malen .btn.klein,#puppenhaus .btn.klein{font-family:var(--font-ui);font-size:22px;padding:10px 18px;border-radius:12px;border:0;background:#8e5bd6;color:#fff;cursor:pointer;min-height:52px}
+#malen .btn.hell,#puppenhaus .btn.hell{background:#c6a4ef;color:#2b2140}
+
+</style>
+<style>
+/* Aufgabenarten (arten.js) im Rahmen von aufgaben.js: .aufgabe ist die Arbeitskarte, .aufgabe-fuss hält "Weiter".
+   Schriften und Rundung aus welt.css; die Karte selbst bleibt hell wie die Welt. Jedes Tipp-Ziel ist mindestens 48 px groß.
+   Gezogene Kärtchen (.dragghost) hängen am body, darum gelten ihre Regeln auch außerhalb von .aufgabe. */
+.aufgabe{--lila:#8e5bd6;--lila2:#e9dcfb;--gelb:#ffe066;--line:#ddd0ee;--tinte:#3b2b52;--leise:#75688a;
+  background:#fff;color:var(--tinte);border-radius:var(--r);box-shadow:var(--shadow);font-family:var(--font-read);font-size:20px;
+  user-select:none;-webkit-user-select:none;touch-action:manipulation;color-scheme:light}
+.aufgabe-fuss{display:flex;justify-content:center;padding:12px 0}
+.aufgabe .btn,.aufgabe-fuss .btn{font-family:var(--font-ui);font-size:22px;padding:10px 24px;border-radius:14px;border:0;background:#8e5bd6;color:#fff;cursor:pointer;min-height:52px;min-width:52px}
+.aufgabe-fuss .btn{font-size:26px;padding:12px 40px;min-height:60px}
+.aufgabe-fuss .btn.skip{margin-left:auto;background:#fff;color:#8e5bd6;border:2px solid #c6a4ef;font-size:20px;padding:8px 20px;min-height:52px}
+.aufgabe .btn.richtig{outline:6px solid #f2c94c;outline-offset:3px}
+.aufgabe .btn.ghost{background:#fff;color:var(--lila);border:2px solid var(--lila2)}
+.aufgabe .btn.sm{padding:6px 14px;min-width:64px}
+.aufgabe .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center}
+.aufgabe .muted{color:var(--leise)} .aufgabe .small{font-size:16px}
+.aufgabe .glow,.dragghost.glow{box-shadow:0 0 0 4px #ffe066,0 0 18px 6px #ffd84d!important;animation:a-gl 1.2s infinite}
+@keyframes a-gl{50%{box-shadow:0 0 0 4px #ffe066,0 0 4px 2px #ffd84d}}
+.aufgabe .scene{display:flex;flex-direction:column;align-items:center;gap:14px;padding:16px}
+.aufgabe .big{font-size:40px;font-weight:700}
+.aufgabe .big.bild{font-size:80px;line-height:1.1}
+.aufgabe .hintline{min-height:30px;font-size:22px;color:var(--lila);font-weight:700;text-align:center}
+.aufgabe .zone{border:3px dashed var(--line);border-radius:16px;min-height:90px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center}
+.aufgabe .tok{touch-action:none;cursor:grab}
+.dragghost{position:fixed!important;pointer-events:none;transform:translate(-50%,-50%);z-index:99;opacity:.9;margin:0!important}
+.aufgabe .dragging{opacity:.35}
+.aufgabe .ph{color:#b7a9cc;font-size:18px}
+/* Münzen */
+.aufgabe .coin,.coin.dragghost{border-radius:50%;display:grid;place-items:center;font-family:var(--font-read);font-size:14px;font-weight:700;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18);color:#4a3520}
+.aufgabe .c1,.c1.dragghost{width:48px;height:48px;background:#d99a6c} .aufgabe .c2,.c2.dragghost{width:52px;height:52px;background:#d99a6c} .aufgabe .c5,.c5.dragghost{width:56px;height:56px;background:#d99a6c}
+.aufgabe .c10,.c10.dragghost{width:54px;height:54px;background:#f2c94c} .aufgabe .c20,.c20.dragghost{width:58px;height:58px;background:#f2c94c} .aufgabe .c50,.c50.dragghost{width:64px;height:64px;background:#f2c94c}
+.aufgabe .c100,.c100.dragghost{width:66px;height:66px;background:radial-gradient(#f2c94c 55%,#cfd3d8 57%)}
+.aufgabe .tray{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center;background:var(--lila2);padding:10px;border-radius:16px}
+.aufgabe .counter{min-width:340px;background:#faf6ef}
+.aufgabe .tag{font-size:30px;background:#fff7d6;border:2px solid #e8d48a;border-radius:10px;padding:4px 14px;font-weight:700}
+/* Perlen: Zehnerstange und einzelne Perle, beide mindestens 48 px breit zum Tippen */
+.aufgabe .rod,.rod.dragghost{display:flex;flex-direction:column;gap:2px;padding:4px 15px;border-radius:10px;background:#efe6fb}
+.aufgabe .rod i,.rod.dragghost i{width:18px;height:16px;border-radius:50%;background:#8e5bd6;display:block}
+.aufgabe .bead,.bead.dragghost{width:48px;height:48px;border-radius:12px;background:radial-gradient(circle,#8e5bd6 11px,transparent 12px)}
+/* Rechenstrich und Ziffernblock */
+.aufgabe .rs{width:100%;display:flex;justify-content:center}
+.aufgabe .strich{width:100%;max-width:560px}
+.aufgabe .strich line{stroke:var(--tinte);stroke-width:3}
+.aufgabe .strich text{font-size:16px;text-anchor:middle;fill:var(--tinte)}
+.aufgabe .strich .arc{fill:none;stroke:var(--lila);stroke-width:3}
+.aufgabe .strich .al{fill:var(--lila);font-weight:700}
+.aufgabe .keypad{display:grid;grid-template-columns:repeat(3,64px);gap:8px}
+.aufgabe .keypad .btn{min-height:56px;padding:0;font-family:var(--font-read);font-size:26px}
+.aufgabe .answerbox{display:inline-block;font-size:40px;min-width:120px;text-align:center;border-bottom:4px solid var(--lila);min-height:56px;vertical-align:bottom}
+/* Gitter */
+.aufgabe .grid{display:grid;gap:3px}
+.aufgabe .grid div{width:48px;height:48px;border-radius:8px;background:#f1ebf8;display:grid;place-items:center;font-size:15px;cursor:pointer}
+.aufgabe .h100 div.lbl{background:#e2d4f5;font-weight:700}
+.aufgabe .h100 div.seen{background:#fff;color:var(--leise)}
+.aufgabe .h100 div.rowhl{outline:3px solid var(--gelb)}
+.aufgabe .h100 div.home{background:#ffe9a8;font-size:22px}
+.aufgabe .beet div{background:#c9a985;width:52px;height:52px;font-size:26px}
+.aufgabe .beet div.on{background:#a8d08d}
+.aufgabe .beet div.guide{outline:3px dashed var(--lila)}
+.aufgabe .mirror div{width:48px;height:48px}
+.aufgabe .mirror div.fest{cursor:default}
+.aufgabe .mirror div.on{background:var(--lila)}
+.aufgabe .mirror div.fold{border-right:4px dashed var(--tinte)}
+.aufgabe .mirror div.dim{opacity:.25}
+.aufgabe .mirror div.tg{background:#e8d7ff;box-shadow:inset 0 0 0 3px var(--lila)}
+/* Uhr */
+.aufgabe .clock{width:320px;height:320px;touch-action:none}
+.aufgabe .clock .face{fill:#fff;stroke:var(--tinte);stroke-width:4}
+.aufgabe .clock .num{font-size:18px;text-anchor:middle;font-weight:700;fill:var(--tinte)}
+.aufgabe .clock .num.glowt{fill:#c27a00;font-size:26px}
+.aufgabe .clock .hh{stroke:var(--tinte);stroke-width:9;stroke-linecap:round}
+.aufgabe .clock .mh{stroke:var(--lila);stroke-width:6;stroke-linecap:round}
+/* Katzen und Fische */
+.aufgabe .cats{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.aufgabe .cat{flex-direction:column;min-width:130px;min-height:150px}
+.aufgabe .cat .ce{font-size:42px}.aufgabe .cat .cn{font-size:18px}.aufgabe .cat .cc{font-size:22px;font-weight:700;color:var(--lila);min-height:26px}
+.aufgabe .fishes{display:flex;flex-wrap:wrap;gap:2px;justify-content:center;max-width:150px}
+.aufgabe .fish,.fish.dragghost{font-size:30px;width:48px;height:48px;display:grid;place-items:center}
+/* Deutsch */
+.aufgabe .word{display:flex;align-items:flex-end;flex-wrap:wrap;justify-content:center;font-size:56px;font-weight:700;letter-spacing:.02em}
+.aufgabe .syl{display:flex;padding:0 2px 10px;border-bottom:5px solid var(--lila);border-radius:0 0 50% 50%/0 0 22px 22px;margin:0 3px}
+.aufgabe .gap{position:relative;z-index:1;width:48px;margin:0 -13px;height:76px;cursor:pointer;display:grid;place-items:center}
+.aufgabe .gap::after{content:"";width:2px;height:40px;background:#e6dcf3}
+.aufgabe .gap.on::after{width:4px;background:var(--tinte)}
+.aufgabe .ltr.c0{color:#6b3fbf}.aufgabe .ltr.c1{color:#1d7fb8}
+.aufgabe .unit{display:inline-block;min-width:48px;min-height:72px;text-align:center;padding:0 3px;border-radius:10px;cursor:pointer}
+.aufgabe .unit.on{background:var(--gelb)}
+.aufgabe .units .syl.walk{background:#f3ecff}
+.aufgabe .flash{font-size:64px;font-weight:700;min-height:110px;min-width:340px;border:4px solid var(--line);border-radius:18px;display:grid;place-items:center;background:#fff}
+.aufgabe .opts{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.aufgabe .opts.drei{grid-template-columns:repeat(3,1fr)}
+.aufgabe .opt{font-size:64px;background:#fff;border:3px solid var(--line);border-radius:18px;width:150px;height:120px;cursor:pointer;padding:0;color:inherit}
+.aufgabe .opt.bild{height:140px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.aufgabe .opt.bild span{font-family:var(--font-read);font-size:18px}
+.aufgabe .sentence{font-size:32px;line-height:1.7;text-align:center;max-width:760px}
+.aufgabe .sentence span{padding:2px 4px;border-radius:8px}
+.aufgabe .sentence span[data-i]{display:inline-block;min-width:48px;line-height:1.5;cursor:pointer}
+.aufgabe .sentence span.dim{opacity:.25}
+.aufgabe .sentence span.hl{background:var(--lila2)}
+.aufgabe .sentence span.x{text-decoration:line-through;text-decoration-thickness:4px;color:var(--leise)}
+.aufgabe .gapz{min-width:64px;min-height:76px;display:inline-grid;border-radius:10px;padding:0 4px}
+.aufgabe .gapz.voll{border:0}
+.aufgabe .tile,.tile.dragghost{font-family:var(--font-read);font-size:40px;font-weight:700;background:#fff;border:3px solid var(--lila2);border-radius:12px;min-width:58px;height:66px;display:grid;place-items:center;padding:0 8px;color:#3b2b52;cursor:pointer}
+.aufgabe .tile.leer,.tile.leer.dragghost{font-size:24px;font-weight:400;color:#75688a}
+.aufgabe .baskets{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.aufgabe .basket{flex-direction:column;min-width:240px;min-height:180px;background:#fbf8ff}
+.aufgabe .basket .bl{font-family:var(--font-ui);font-size:22px;font-weight:600}
+.aufgabe .wtile,.wtile.dragghost{font-family:var(--font-read);font-size:28px;font-weight:700;background:#fff;border:3px solid var(--lila2);border-radius:12px;padding:8px 14px;min-width:48px;color:#3b2b52}
+.aufgabe .built{display:flex;gap:6px;min-height:76px;min-width:300px;border-bottom:4px solid var(--lila);justify-content:center;padding-bottom:4px}
+.aufgabe .trace{position:relative;width:320px;height:320px;background:#fff;border:3px solid var(--line);border-radius:18px}
+.aufgabe .trace svg,.aufgabe .trace canvas{position:absolute;inset:0;width:100%;height:100%}
+.aufgabe .trace canvas{touch-action:none}
+.aufgabe .trace .guide{fill:none;stroke:#e9e1f4;stroke-width:12;stroke-linecap:round;stroke-linejoin:round}
+.aufgabe .trace .anim{fill:none;stroke:var(--lila);stroke-width:5;stroke-linecap:round;opacity:0}
+.aufgabe .lines{position:absolute;left:0;right:0;border-top:2px solid #f0eaf7}
+.aufgabe .yesno .btn{font-size:28px;min-width:200px;min-height:80px}
+.aufgabe .yesno .btn.nein{background:#6c7a9c}
+.aufgabe .text,.aufgabe .sachtext{font-size:26px;line-height:1.6;max-width:760px;background:#fffdf6;border-radius:14px;padding:12px 18px}
+.aufgabe .text span.hl,.aufgabe .sachtext .k.hl,.aufgabe .sentence .k.hl{background:var(--gelb)}
+.aufgabe .ans{font-family:var(--font-read);font-size:22px;background:#fff;border:3px solid var(--line);border-radius:14px;padding:10px 16px;cursor:pointer;min-width:280px;min-height:56px;color:inherit}
+.aufgabe .items{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;min-height:90px}
+.aufgabe .thing,.thing.dragghost{display:flex;flex-direction:column;align-items:center;background:#fff;border:2px solid #ddd0ee;border-radius:14px;padding:6px 10px;font-family:var(--font-read);font-size:17px;color:#3b2b52}
+.aufgabe .thing .te,.thing.dragghost .te{font-size:40px}.aufgabe .thing .tm{color:var(--lila);font-size:15px}
+.aufgabe .bins{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%}
+.aufgabe .bin{flex-direction:column;min-height:120px;font-size:18px;text-align:center}
+.aufgabe .bin b{font-family:var(--font-ui);font-weight:600}
+.aufgabe .plant{position:relative;width:340px;height:380px}
+.aufgabe .plant .pz{position:absolute;min-width:120px;min-height:56px;background:rgba(255,255,255,.85);font-size:18px}
+.aufgabe .plant .pd{font-size:14px;color:var(--lila);width:100%;text-align:center}
+.aufgabe .lbl2,.lbl2.dragghost{font-family:var(--font-read);font-size:22px;font-weight:700;background:#fff;border:3px solid var(--lila2);border-radius:12px;padding:9px 14px;color:#3b2b52}
+.aufgabe .slots{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.aufgabe .slot{width:130px;height:150px;flex-direction:column;position:relative}
+.aufgabe .slot .sn{position:absolute;top:4px;left:8px;font-size:16px;color:var(--leise)}
+.aufgabe .ablage{border:0}
+.aufgabe .pcard,.pcard.dragghost{display:flex;flex-direction:column;align-items:center;background:#fff;border:3px solid #e9dcfb;border-radius:14px;padding:6px;width:110px;font-family:var(--font-read);font-size:16px;text-align:center;color:#3b2b52}
+.aufgabe .pcard .pe,.pcard.dragghost .pe{font-size:46px}
+.aufgabe .pcard[data-n]::before{content:attr(data-n);font-weight:700;color:#c27a00}
+/* Zahlenstrahl, Lineal, Diagramm */
+.aufgabe .nl{width:100%;max-width:640px;touch-action:none}
+.aufgabe .nl text,.aufgabe .chart text{fill:var(--tinte);font-family:var(--font-read)}
+.aufgabe .chart{width:100%;max-width:480px}
+.aufgabe .chart .bar{cursor:pointer}
+.aufgabe .opbtn{font-family:var(--font-read);font-size:30px;font-weight:700} .aufgabe .opbtn.on{outline:4px solid var(--lila)}
+/* Zahlenmauer */
+.aufgabe .wall{display:flex;flex-direction:column;align-items:center;gap:4px}
+.aufgabe .wall .wr{display:flex;gap:4px}
+.aufgabe .brick{width:96px;height:60px;border-radius:8px;background:#f3d9c4;border:3px solid #d9a77f;display:grid;place-items:center;font-size:30px;font-weight:700}
+.aufgabe .brick.hid{background:#fff;border-style:dashed;cursor:pointer}
+.aufgabe .brick.sel{outline:4px solid var(--lila)}
+.aufgabe .wobble{animation:a-wb .5s} @keyframes a-wb{25%{transform:rotate(-1.5deg)}75%{transform:rotate(1.5deg)}}
+/* Lesen und Malen */
+.aufgabe .paint{width:100%;max-width:520px;background:#eaf6ff;border-radius:16px}
+.aufgabe .paint.karte{background:#f1ebf8}
+.aufgabe .paint .o{stroke:#2b2140;stroke-width:2.5;cursor:pointer}
+.aufgabe .paint .o.glow{stroke:#ffb800;stroke-width:6;animation:none;box-shadow:none!important}
+.aufgabe .paint text{pointer-events:none}
+.aufgabe .pal{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.aufgabe .pal button{width:58px;height:58px;min-height:58px;padding:0;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--line);cursor:pointer;font-size:24px}
+.aufgabe .pal button.on{box-shadow:0 0 0 5px var(--tinte)}
+/* Abschreibfehler */
+.aufgabe .copy{font-size:30px;line-height:1.6;background:#fffdf6;border-radius:14px;padding:8px 16px}
+.aufgabe .copy.v{background:#f1ebf8}
+.aufgabe .copy span{padding:2px 4px;border-radius:8px}
+.aufgabe #c span{display:inline-block;min-width:48px;text-align:center;cursor:pointer}
+.aufgabe .copy span.dim{opacity:.25} .aufgabe .copy span.hl{background:var(--gelb)}
+.aufgabe .copy span.x{text-decoration:line-through;text-decoration-thickness:4px;color:var(--leise)}
+/* Paare */
+.aufgabe .pairs{display:grid;grid-template-columns:1fr 1fr;gap:12px 60px}
+.aufgabe .spalte{display:flex;flex-direction:column;gap:12px}
+.aufgabe .pc{font-size:28px;background:#fff;border:3px solid var(--lila2);border-radius:14px;padding:8px 16px;min-width:150px;text-align:center;cursor:pointer}
+.aufgabe .pc.sel{outline:4px solid var(--lila)} .aufgabe .pc.dim{opacity:.3}
+.aufgabe .pc.done{background:var(--lila2);cursor:default}
+.aufgabe .pc.done::before{content:attr(data-n) " ";font-weight:700;color:#c27a00;font-size:20px}
+@media (max-width:700px){ .aufgabe .bins{grid-template-columns:repeat(2,1fr)} .aufgabe .pairs{gap:12px 16px} .aufgabe .pc{min-width:0} .aufgabe .word{font-size:44px} }
+
+</style>
+<body>
+<main id="app">
+  <section id="startCard" class="card">
+    <h1>Azras Welt</h1>
+    <button id="startBtn" disabled>Einen Moment …</button>
+  </section>
+</main>
+<div id="world" hidden></div>
+<p id="note" role="status" hidden></p>
+<button id="gear" hidden aria-label="Parent area (press and hold)">⚙</button>
+<section id="eltern" lang="en" hidden></section>
+<div id="spiele" hidden><div class="wk"><button class="aus" id="spAus">Zurück</button><div id="spS"></div><p class="bub wk-c" id="spC" hidden></p></div></div>
+<div id="kochen" hidden><div class="wk"><button class="aus" id="koAus">Zurück</button><div id="koS"></div><p class="bub wk-c" id="koC" hidden></p></div></div>
+<div id="pflege" hidden><div class="wk"><button class="aus" id="pfAus">Zurück</button><div id="pfS"></div><p class="bub wk-c" id="pfC" hidden></p></div></div>
+<div id="kiste" hidden><div class="wk"><button class="aus" id="kiAus">Zurück</button><div id="kiS"></div><p class="bub wk-c" id="kiC" hidden></p></div></div>
+<div id="beet" hidden><div class="wk"><button class="aus" id="beAus">Zurück</button><div id="beS"></div><p class="bub wk-c" id="beC" hidden></p></div></div>
+<div id="malen" hidden><div class="wk"><button class="aus" id="maAus">Zurück</button><div id="maS"></div><p class="bub wk-c" id="maC" hidden></p></div></div>
+<div id="puppenhaus" hidden><div class="wk"><button class="aus" id="phAus">Zurück</button><div id="phS"></div><p class="bub wk-c" id="phC" hidden></p></div></div>
+<div id="buch" hidden><div class="wk"><button class="aus" id="buchAus" hidden>Aufhören</button><div id="buchS"></div><p class="bub wk-c" id="buchC" hidden></p></div></div>
+<div id="werk" hidden><div class="wk"><div class="wk-knoepfe"><button class="aus" id="wkNeu" hidden></button><button class="aus" id="wkWeg" hidden></button><button class="aus" id="wkAus" hidden>Aufhören</button></div><p class="bub wk-n" id="wkN" hidden></p><div id="wkBuehne"></div><p class="bub wk-c" id="wkC" hidden></p></div></div>
+<script src="state.js"></script>
+<script src="skills.js"></script>
+<script src="lernen.js"></script>
+<script src="bild.js"></script>
+<script src="woche.js"></script>
+<script src="aufgaben.js"></script>
+<script src="arten.js"></script>
+<script src="tag.js"></script>
+<script src="inhalt.js"></script>
+<script src="lesen.js"></script>
+<script src="buecher.js"></script>
+<script src="gehen.js"></script>
+<script src="jahr.js"></script>
+<script src="geschichten.js"></script>
+<script src="welt.js"></script>
+<script src="spiel.js"></script>
+<script src="regal.js"></script>
+<script src="spiele.js"></script>
+<script src="kochen.js"></script>
+<script src="katze.js"></script>
+<script src="einrichten.js"></script>
+<script src="malen.js"></script>
+<script src="puppenhaus.js"></script>
+<script src="eltern.js"></script>
+<script src="main.js"></script>
+</body>
+
+<script>if("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));</script>
