@@ -175,7 +175,8 @@ A.art({ id: "rechenstrich", fach: "mathe", titel: "Springen am Rechenstrich", kl
 // Ziffernblock: mit Lücke {a, t, thing} (34 + _ = 50); ohne Lücke {a, b} (8 + 5 = _) oder {wort, res} (Zahlwort → Ziffern)
 // Ticket 37: ohne Lücke auch {op: "-"} (43 − 5 = _) und {hilfe: [Satz, [Zeile, Satz], [Zeile, Satz]]} (Hilfsaufgabe +9 = +10 − 1);
 // mit Lücke {einheit: "Brötchen"} statt Geld; lob (optional)
-const loesung = it => it.wort ? it.res : it.b != null ? (it.op === "-" ? it.a - it.b : it.a + it.b) : it.t - it.a;
+// Lücke: a + _ = t (vorn: _ + a = t), mit op "-": a − _ = t
+const loesung = it => it.wort ? it.res : it.b != null ? (it.op === "-" ? it.a - it.b : it.a + it.b) : it.op === "-" ? it.a - it.t : it.t - it.a;
 // Einer zu einer Zehnerzahl ohne Übergang: wie die kleine Aufgabe; minus über den Zehner: erst zurück bis zum Zehner
 const einerFall = it => it.b != null && it.b < 10 && (it.op === "-" || (it.a % 10 > 0 && it.a % 10 + it.b <= 9));
 function einerHilfe(it){ const m = it.op === "-", z = m ? "−" : "+", e = it.a % 10, k = m ? e - it.b : e + it.b, T = it.a - e;
@@ -189,19 +190,22 @@ A.art({ id: "ergaenzen", fach: "mathe", titel: "Ergänzen mit Ziffern tippen", k
     { a: 8, b: 5 }, { a: 37, b: 6 }, { wort: "vierundsiebzig", res: 74 }, { wort: "achtundvierzig", res: 48 },
     { a: 42, b: 5 }, { a: 43, b: 5, op: "-" }, { a: 68, b: 4, op: "-" },
     { a: 36, b: 9, hilfe: ["Rechne erst mit 10 statt mit 9.", ["36 + 10 − 1", "So rechne ich mit der Hilfsaufgabe."], ["36 + 10 = 46, 46 − 1 = ?", "Rechne du den letzten Schritt."]] },
-    { a: 46, t: 50, einheit: "Brötchen", bitte: "In der Tüte sind 46 Brötchen. Wie viele fehlen bis 50?" }],
+    { a: 46, t: 50, einheit: "Brötchen", bitte: "In der Tüte sind 46 Brötchen. Wie viele fehlen bis 50?" },
+    { a: 45, t: 80, vorn: true, einheit: "Brötchen", bitte: "Wie viele Brötchen fehlen? ▢ + 45 = 80" }, { a: 71, t: 50, op: "-", einheit: "Brötchen", bitte: "Wie viele habe ich verkauft? 71 − ▢ = 50" }],
   mount(st, it, G){
     if(it.wort){ G.say("n", it.bitte || `Auf dem Paket steht: ${it.wort}. Tipp die Hausnummer mit Ziffern.`);
       st.innerHTML = `<div class="scene"><div class="tag">📦 ${it.wort}</div><div class="hintline" id="h"></div><div class="big"><span class="answerbox"></span></div><div class="keypad"></div></div>`;
     } else if(it.b != null){ const z = it.op === "-" ? "−" : "+"; G.say("n", it.bitte || `Rechne ${it.a} ${z} ${it.b} und tipp das Ergebnis.`);
       st.innerHTML = `<div class="scene"><div class="big">${it.a} ${z} ${it.b} = <span class="answerbox"></span></div><div class="hintline" id="h"></div><div id="rs" class="rs"></div><div class="keypad"></div></div>`;
     } else { G.say("n", it.bitte || `Du hast ${fmt(it.a)}. ${it.thing} kostet ${fmt(it.t)}. Wie viel fehlt dir noch?`);
-      st.innerHTML = `<div class="scene"><div class="big">${it.a} + <span class="answerbox"></span> = ${it.t}</div><div id="rs" class="rs"></div><div class="keypad"></div></div>`; }
+      const gl = it.op === "-" ? `${it.a} − <span class="answerbox"></span>` : it.vorn ? `<span class="answerbox"></span> + ${it.a}` : `${it.a} + <span class="answerbox"></span>`;
+      st.innerHTML = `<div class="scene"><div class="big">${gl} = ${it.t}</div><div class="hintline" id="h"></div><div id="rs" class="rs"></div><div class="keypad"></div></div>`; }
     const res = loesung(it);
     const react = x => it.wort ? `${x} heißt „${zahlwort(x)}“.`
       : it.b != null && it.op === "-" ? (x < it.a ? `${it.a} − ${it.a - x} wäre ${x}.` : `${x} ist nicht weniger als ${it.a}.`)
       : it.b != null ? (x > it.a ? `${it.a} + ${x - it.a} wäre ${x}.` : `${x} ist weniger als ${it.a}.`)
-      : it.einheit ? `Mit ${x} ${it.einheit} mehr wären es ${it.a + x}.` : `Mit ${x} ct mehr hättest du ${fmt(it.a + x)}.`;
+      : it.op === "-" ? (x > it.a ? `${x} ist mehr als ${it.a}, so viel kann man nicht wegnehmen.` : `${it.a} − ${x} wäre ${it.a - x}.`)
+      : it.einheit ? `Mit ${x} ${it.einheit} mehr wären es ${it.a + x}.` : it.thing ? `Mit ${x} ct mehr hättest du ${fmt(it.a + x)}.` : `${it.a} + ${x} wäre ${it.a + x}.`;
     const kp = keypad(st, G, x => { if(x === res) G.solved(); else { G.miss(react(x)); kp.clear(); } }); },
   hint(r, it, G){
     if(it.wort){ const m = it.res > 20 && it.res < 100 && it.res % 10 ? /^(.+)und(.+)$/.exec(it.wort) : null;
@@ -217,10 +221,12 @@ A.art({ id: "ergaenzen", fach: "mathe", titel: "Ergänzen mit Ziffern tippen", k
       G.$("#rs").innerHTML = strichSVG(it.a - 2, res + 2, marks, arcs);
       if(r === 2) return "So kannst du die Zahl zerlegen.";
       if(m !== it.a) G.$("#h").textContent = `${it.a} + ${m - it.a} = ${m}`; return `Von ${m} aus noch ${res - m} weiter, dann tipp das Ergebnis.`; }
-    const z = Math.ceil(it.a / 10) * 10, eins = z === it.t || z === it.a;
-    if(r === 1) return z === it.t ? `Wie viele fehlen von ${it.a} bis zum nächsten Zehner?` : z === it.a ? `Zähl von ${it.a} aus weiter bis ${it.t}.` : "Rechne erst bis zum nächsten Zehner.";
-    const sp = (eins ? [[it.a, it.t]] : [[it.a, z], [z, it.t]]).map(([f, t]) => r === 2 ? { f, t } : { f, t, l: "+" + (t - f) });
-    G.$("#rs").innerHTML = strichSVG(it.a - 2, it.t + 2, eins ? [{ v: it.a }, { v: it.t }] : [{ v: it.a }, { v: z }, { v: it.t }], sp);
+    if(it.op === "-" && r === 1) return `Wie weit ist es von ${it.t} hinauf bis ${it.a}?`;
+    const g = it.op === "-" ? { a: it.t, t: it.a } : it; // a − _ = t: von t bis a ergänzen
+    const z = Math.ceil(g.a / 10) * 10, eins = z >= g.t || z === g.a; // im selben Zehner: ein Sprung
+    if(r === 1) return z === g.t ? `Wie viele fehlen von ${g.a} bis zum nächsten Zehner?` : z === g.a ? `Zähl von ${g.a} aus weiter bis ${g.t}.` : "Rechne erst bis zum nächsten Zehner.";
+    const sp = (eins ? [[g.a, g.t]] : [[g.a, z], [z, g.t]]).map(([f, t]) => r === 2 ? { f, t } : { f, t, l: "+" + (t - f) });
+    G.$("#rs").innerHTML = strichSVG(g.a - 2, g.t + 2, eins ? [{ v: g.a }, { v: g.t }] : [{ v: g.a }, { v: z }, { v: g.t }], sp);
     if(eins) return r === 2 ? "Hier ist der Sprung. Wie groß ist er?" : "Lies die Zahl am Sprung und tipp sie.";
     return r === 2 ? "Hier sind die zwei Sprünge. Wie groß ist jeder?" : "Zähl die beiden Sprünge zusammen und tipp das Ergebnis."; },
   praise: it => it.lob || (it.wort ? "Du hast das Wort genau gelesen." : einerFall(it) && !(it.op === "-" && it.b > it.a % 10) ? "Du hast an die kleine Aufgabe gedacht." : "Du hast erst bis zum Zehner gerechnet."),
@@ -473,6 +479,38 @@ A.art({ id: "zahlenmauer", fach: "mathe", titel: "Zahlenmauer", klang: "pop",
 const SKALA = { 100: { klein: 5, gross: 10, tol: 3, zeile: "Ich schreibe die Zehner an die Straße." }, 20: { klein: 1, gross: 5, tol: .5, zeile: "Ich schreibe die Fünfer an die Straße." } };
 function stelleHaus(st, v, bis){ const svg = st.querySelector("#nl"); svg.scrollIntoView({ block: "center" }); const b = svg.getBoundingClientRect();
   const p = { x: b.left + (30 + v * 540 / bis) / 600 * b.width, y: b.top + b.height * .6 }; zeig(svg, "pointerdown", p); zeig(svg, "pointerup", p); tippe(st.querySelector("#go")); }
+// Tabelle (Ticket 39, Welt der Zahl Kap. 7): jede Reihe wächst um denselben Schritt, ein Kästchen ist leer.
+// luecke [Reihe, Spalte] (Spalte 0 ist die Überschrift); in der oberen Reihe: „Nach wie vielen Wochen …?“
+const tabSchritt = z => z[2] - z[1];
+A.art({ id: "tabelle", fach: "mathe", titel: "Tabelle ergänzen", klang: "clink",
+  en: { title: "Fill in a table", does: "reads a table whose rows grow by the same step each time and types the missing number on a keypad." },
+  beispiel: [{ zeilen: [["Woche", 1, 2, 3, 4, 5], ["Euro", 5, 10, 15, 20, 25]], luecke: [1, 3], res: 15 },
+    { zeilen: [["Tag", 1, 2, 3, 4, 5, 6], ["Brezeln", 8, 16, 24, 32, 40, 48]], luecke: [1, 6], res: 48, bitte: "Jeden Tag backe ich mehr Brezeln. Wie viele sind es am 6. Tag?" },
+    { zeilen: [["Woche", 1, 2, 3, 4, 5, 6], ["Euro", 5, 10, 15, 20, 25, 30]], luecke: [0, 6], res: 6, frage: "Nach wie vielen Wochen hat Azra 30 €?" }],
+  mount(st, it, G){ const [lr, lc] = it.luecke; G.say("n", it.bitte || it.frage || "Was fehlt in der Tabelle?");
+    st.innerHTML = `<div class="scene"><table class="tabelle">${it.zeilen.map((z, r) => `<tr>${z.map((v, c) => r === lr && c === lc ? `<td class="luecke"><span class="answerbox"></span></td>`
+      : c === 0 ? `<th>${v}</th>` : `<td data-r="${r}" data-c="${c}">${v}</td>`).join("")}</tr>`).join("")}</table>${it.frage ? `<div class="big" style="font-size:26px">${it.frage}</div>` : ""}
+      <div class="hintline" id="h"></div><div class="keypad"></div></div>`;
+    const oben = it.zeilen[0], unten = it.zeilen[lr === 0 ? 1 : lr], d = tabSchritt(unten);
+    const react = x => lr === 0 ? `Bei ${x} stünde darunter ${unten[1] + (x - oben[1]) / tabSchritt(oben) * d}.`
+      : lc > 1 ? (x > unten[lc - 1] ? `Von ${unten[lc - 1]} bis ${x} wären es ${x - unten[lc - 1]}, sonst kommen immer ${d} dazu.` : `${x} ist nicht mehr als ${unten[lc - 1]}, die Reihe wird aber größer.`)
+      : x < unten[2] ? `Von ${x} bis ${unten[2]} wären es ${unten[2] - x}, sonst immer ${d}.` : `${x} ist nicht weniger als ${unten[2]}, die Reihe wird aber größer.`;
+    const kp = keypad(st, G, x => { if(x === it.res) G.solved(); else { G.miss(react(x)); kp.clear(); } }); },
+  hint(r, it, G){ const [lr, lc] = it.luecke, z = it.zeilen[lr], h = G.$("#h"), zelle = (rr, c) => G.$(`td[data-r="${rr}"][data-c="${c}"]`);
+    G.$$("td.hl").forEach(t => t.classList.remove("hl"));
+    if(lr === 0){ const ziel = it.zeilen[1][lc];
+      if(r === 1) return `Such die ${ziel} in der Reihe ${it.zeilen[1][0]}.`;
+      zelle(1, lc).classList.add("hl"); if(r === 2) return `Was gehört über die ${ziel}?`;
+      h.textContent = `${z[lc - 1]}, und dann eins weiter`; return "Die obere Reihe zählt immer eins weiter."; }
+    const d = tabSchritt(z), vor = lc > 1;
+    if(r === 1) return "Schau, wie viel von einem Kästchen zum nächsten dazukommt.";
+    const [a, b] = lc - 2 >= 1 ? [lc - 2, lc - 1] : [lc + 1, lc + 2]; // zwei Nachbarn ohne die Lücke
+    zelle(lr, a).classList.add("hl"); zelle(lr, b).classList.add("hl");
+    if(r === 2){ h.textContent = `${z[a]} → ${z[b]}: plus ${z[b] - z[a]}`; return `Jedes Mal kommen ${d} dazu.`; }
+    h.textContent = vor ? `${z[lc - 1]} + ${d} = ?` : `${z[lc + 1]} − ${d} = ?`; return "Rechne du und tipp das Ergebnis."; },
+  praise: it => it.lob || "Du hast gesehen, wie die Tabelle wächst.",
+  probe: { falsch: (st, it) => tippZahl(st, it.res + 1), richtig: (st, it) => tippZahl(st, it.res) } });
+
 A.art({ id: "zahlenstrahl", fach: "mathe", titel: "Zahlenstrahl: Haus an die richtige Stelle", klang: "chime",
   en: { title: "Number line: put the house in its place", does: "drags a house along a 0–100 street to the house number (within 3); on the short street 0–20 to the exact number." },
   beispiel: [{ n: 60, h: "Es ist der lange Strich gleich nach der 50." }, { n: 75, h: "Zwischen 70 und 80, genau in der Mitte." }, { n: 92, h: "Zwischen 90 und 100, ganz nah bei 90." },
@@ -673,7 +711,7 @@ A.art({ id: "weiterschwingen", fach: "deutsch", titel: "Lückenwort: weiterschwi
     const x = (it.hilfe || [])[r - 1]; if(!x) return r === 1 ? "Sprich das Wort langsam und hör genau hin." : null;
     if(typeof x === "string") return x;
     h.textContent = x[0]; if(x[2]) G.sprich(x[2]); return x[1]; },
-  praise: it => it.long ? "Du hast das Wort weitergeschwungen." : "Du hast genau hingehört.",
+  praise: it => it.lob || (it.long ? "Du hast das Wort weitergeschwungen." : "Du hast genau hingehört."),
   probe: { falsch: (st, it) => tap(st.querySelector(`.tile[data-t="${it.tiles.find(t => t !== it.ans)}"]`)), richtig: (st, it) => ziehe(st.querySelector(`.tile[data-t="${it.ans}"]`), st.querySelector("#gap")) } });
 
 // Ziehen in Körbe/Tonnen: falsch = erstes Ding in einen falschen Korb, richtig = alles in den passenden

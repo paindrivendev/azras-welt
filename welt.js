@@ -81,13 +81,18 @@ function hud(){
   let s = `<g filter="url(#sh)"><rect x="1330" y="34" width="230" height="74" rx="37" fill="#fff"/></g><circle cx="1374" cy="71" r="22" fill="#e9c24a"/><text x="1374" y="79" text-anchor="middle" class="ui" font-size="20" fill="#7a5a10">€</text><text x="1530" y="83" text-anchor="end" class="ui" font-size="34" fill="#2b2140">${money(S().purse)}</text>`;
   if(V.nacht) return s + (V.cat ? bub(200, 800, 760, S().katze.name, V.cat) : "");
   const knopf = (y, act, text, farbe) => hot(act, `<rect x="1320" y="${y - 15}" width="250" height="96" fill="transparent"/><g filter="url(#sh)"><rect x="1330" y="${y}" width="230" height="66" rx="33" fill="${farbe}"/></g><text x="1445" y="${y + 43}" text-anchor="middle" class="ui" font-size="28" fill="#fff">${text}</text>`);
-  if(SP() && SP().plan()){ let y = 128;
+  let y = 128;
+  if(SP() && SP().plan()){
     // "Nur spielen" (Ticket 20): alles Lernen heute weg; "Doch lernen" holt zurück, was noch nicht fertig ist
     if(SP().nurSpielen){ if(SP().einladungen(true).length){ s += knopf(y, "lernen", "Doch lernen", "#4f9fc9"); y += 104; } }
     else if(SP().einladungen().length){ s += knopf(y, "nurSpielen", "Nur spielen", "#4f9fc9"); y += 104; }
-    if(!SP().nurSpielen && !SP().einladungen().length) s += knopf(y, "neuerTag", "☀ Neuer Tag", "#8e5bd6"); // heute nichts mehr offen: Azra beginnt selbst den nächsten Tag
+    if(!SP().nurSpielen && !SP().einladungen().length){ s += knopf(y, "neuerTag", "☀ Neuer Tag", "#8e5bd6"); y += 104; } // heute nichts mehr offen: Azra beginnt selbst den nächsten Tag
   }
   if(SP() && SP().offen) return s; // die Arbeitskarte zeigt ihre eigenen Sprechblasen
+  if(V.screen === "karte" && window.ABENTEUER){ // Ticket 40
+    if(!ABENTEUER.sucht) s += knopf(y, "schatz", "🗺 Schatzsuche", "#e0904a");
+    s += knopf(y + (ABENTEUER.sucht ? 0 : 104), "postrunde", "✉ Postrunde", "#d9822b");
+    if(!V.msg) s += ABENTEUER.karteOben(hot); }
   const z = window.FREUNDE && FREUNDE.offenerZettel(); // Ticket 38: der Zettel der Besorgung, die Katze liest ihn vor
   if(z){ const w = z.length * 18 + 96; s += hot("zettel", `<g filter="url(#sh)"><rect x="${1570 - w}" y="864" width="${w}" height="100" rx="18" fill="#fffbe0"/></g><text x="${1594 - w}" y="926" class="lesen" font-size="34" fill="#3b2b52">📝 ${esc(z)}</text>`); }
   if(V.msg) s += bub(200, 30, 1100, NB[V.msg.who] ? NB[V.msg.who].name : "", V.msg.text);
@@ -260,6 +265,7 @@ function karte(){
   { const [mx, my] = P(8, 4.4, 0); add(12.4, hot("markt", hit(mx, my - 40, 50) + box(P, 7.6, 4.1, 0, .8, .5, .55, "#f6e7c8")
       + [0, 1, 2, 3].map(i => poly(P, [[7.55 + i * .21, 4.05, 1], [7.76 + i * .21, 4.05, 1], [7.76 + i * .21, 4.65, .8], [7.55 + i * .21, 4.65, .8]], i % 2 ? "#fff" : "#e5607e")).join("")
       + `<g filter="url(#sh)"><rect x="${mx - 44}" y="${my - 128}" width="88" height="34" rx="17" fill="#fff"/></g><text x="${mx}" y="${my - 104}" text-anchor="middle" class="ui" font-size="22" fill="#5a4a78">Markt</text>`)); }
+  if(window.ABENTEUER) ABENTEUER.aufKarte(P, add, hot, hit); // Ticket 40
   const st = kartenPlatz(), [tx, ty] = P(...st);
   add(st[0] + st[1] + .5, `<g id="tok" transform="translate(${tx} ${ty})" pointer-events="none"><ellipse rx="26" ry="9" fill="#2b2140" opacity=".18"/><g id="tokK" transform="scale(${V.links ? -.25 : .25} .25)">${figur("azra")}</g></g>`);
   items.sort((a, b) => a.d - b.d).forEach(i => s += i.svgText);
@@ -271,7 +277,8 @@ function karte(){
     if(window.FREUNDE && AM[id] && S().met[AM[id].id]) s += FREUNDE.herzBild(AM[id].id, sx, sy + 40, .6); // Ticket 38
   }
   s += draussenWetter();
-  s += `<text x="800" y="900" text-anchor="middle" class="ui" font-size="28" fill="#5a4a78">Tipp auf einen Ort, Azra läuft hin.</text>`;
+  const tz = window.ABENTEUER ? ABENTEUER.tierZahl() : 0;
+  if(!V.cat) s += `<text x="800" y="900" text-anchor="middle" class="ui" font-size="28" fill="#5a4a78">${tz === 1 ? "Ein Tier versteckt sich heute hier." : tz ? `${tz} Tiere verstecken sich heute hier.` : "Tipp auf einen Ort, Azra läuft hin."}</text>`;
   return svg(s);
 }
 // ---------- Gehen (Ticket 19): tippen auf den Boden oder Pfeiltasten; nie durch Möbel, Häuser oder Wasser ----------
@@ -301,7 +308,7 @@ function kontext(){
   if(V.screen === "ort" && ORTE[V.ort]) return { boden: ORTE[V.ort].boden, o: [840, 300], u: 52, el: "azra", k: .45, xy: () => V.xy, set: v => V.xy = v,
     ende: ([x, y]) => { if(AUSGANG(x, y)) ACT.go("karte"); } };
   if(V.screen === "karte") return { boden: KARTE_BODEN, o: [800, 120], u: 46, el: "tok", k: .25, xy: kartenPlatz, set: v => V.kxy = v,
-    ende: ([x, y]) => { const id = Object.keys(HAUS).find(h => Math.hypot(HAUS[h].st[0] - x, HAUS[h].st[1] - y) < .6); if(id){ V.pos = id; ACT.ort(id); } } };
+    ende: ([x, y]) => { const id = Object.keys(HAUS).find(h => Math.hypot(HAUS[h].st[0] - x, HAUS[h].st[1] - y) < .6); if(id){ V.pos = id; ACT.ort(id); return true; } } };
   return null;
 }
 // Sie läuft Feld für Feld zum Ziel; dann fertig() oder, ohne fertig, was dort ist (Tür, Ausgang, Haus).
@@ -559,6 +566,10 @@ const ACT = {
   garten(){ if(window.JAHR && JAHR.oeffnen) JAHR.oeffnen(); },
   katze(){ if(window.KATZE && KATZE.oeffnen) KATZE.oeffnen(); else ACT.hint(); },
   einkaufen(){ if(window.KOCHEN) KOCHEN.laden(); },
+  schatz(){ if(window.ABENTEUER) ABENTEUER.schatz(); },
+  schatzAus(){ if(window.ABENTEUER) ABENTEUER.aufhoeren(); },
+  postrunde(){ if(window.ABENTEUER) ABENTEUER.postrunde(); },
+  tier(id){ const p = window.ABENTEUER && ABENTEUER.tierPlatz(id); if(p) geh(p, () => ABENTEUER.tier(id)); },
   markt(){ if(!window.FREUNDE) return; if(V.screen !== "karte") return FREUNDE.markt(); geh([8.2, 5.2], () => FREUNDE.markt()); },
   zettel(){ const z = window.FREUNDE && FREUNDE.offenerZettel(); if(z) say("katze", `Auf dem Zettel steht: ${z}.`); },
   brief(){
@@ -600,6 +611,7 @@ app.addEventListener("click", e => {
     const svg = e.target.closest && e.target.closest("#world svg"); if(!k || !svg) return;
     const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.getScreenCTM().inverse()), xy = G.vonBild(k.o, k.u, p.x, p.y);
     if(V.screen === "zimmer" && window.EINRICHTEN && EINRICHTEN.tippBoden(xy, ZIMMER_BODEN)) return render(); // sie stellt gerade etwas hin
+    if(V.screen === "karte" && window.ABENTEUER && ABENTEUER.sucht) return geh(xy, () => { const z = kartenPlatz(); if(!k.ende(z)) ABENTEUER.graben(z); }); // vor einem Haus geht sie hinein statt zu graben
     return geh(xy);
   }
   const [a, arg] = el.dataset.act.split(":");
@@ -610,7 +622,7 @@ app.addEventListener("click", e => {
 });
 // Pfeiltasten: ein Schritt; gedrückt halten läuft weiter.
 addEventListener("keydown", e => {
-  const d = G.pfeil(e.key), k = d && !app.hidden && ["#eltern", "#buch", "#spiele", "#kochen", "#pflege", "#kiste", "#beet", "#malen", "#puppenhaus", "#markt"].every(s => document.querySelector(s).hidden) && kontext();
+  const d = G.pfeil(e.key), k = d && !app.hidden && ["#eltern", "#buch", "#spiele", "#kochen", "#pflege", "#kiste", "#beet", "#malen", "#puppenhaus", "#markt", "#abenteuer"].every(s => document.querySelector(s).hidden) && kontext();
   if(!k || /input|select|textarea/i.test(document.activeElement && document.activeElement.tagName)) return;
   e.preventDefault(); if(geht) return;
   const [x, y] = k.xy(), n = [x + d[0], y + d[1]];
@@ -623,6 +635,7 @@ function route(){
   if(SP()) SP().schliessen();
   if(window.REGAL) REGAL.schliessen();
   if(window.KATZE && KATZE.offen) KATZE.zu();
+  if(window.ABENTEUER && ABENTEUER.offen) ABENTEUER.zu();
   if(window.EINRICHTEN && EINRICHTEN.offen) EINRICHTEN.zu();
   if(window.JAHR && JAHR.offen) JAHR.zu();
   if(window.MALEN && MALEN.offen) MALEN.zu();

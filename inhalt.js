@@ -514,6 +514,174 @@ schritt("m_mauer_100", "garten", "lotte", ["zahlenmauer"], "Number walls to 100,
   zeigen: ["Jeder Stein ist so viel wie die zwei Steine darunter.", "Unten stehen 12 und 15, darüber steht 27.", "Fehlt unten ein Stein, rechne ich rückwärts.", "Oben 60, links 25: 60 − 25 = 35."],
   merkheft: "In der Zahlenmauer rechne ich nach oben plus und nach unten minus." });
 
+// ---------- Welt der Zahl Kap. 6 (Rest) und 7 (Ticket 39): Stimmt das?, ZE ± ZE, Platzhalter, Unterschied, Sachaufgaben, Tabellen, Probe, Zauberquadrate ----------
+// Kann das sein? [Satz, stimmt, Satz danach]; Stufe 0 Preise, Stufe 1 Größen und Zeiten, Stufe 2 nachgerechnet
+const PLAUSIBEL = [
+  [["Ein Eis kostet bei mir 40 €.", false, "Ein Eis kostet eher 1 € 50 ct, 40 € ist viel zu teuer."], ["Ein Brot kostet bei mir 3 €.", true, "Doch: 3 € für ein Brot kann gut sein."],
+    ["Ein Apfel kostet bei mir 30 ct.", true, "Doch: 30 ct für einen Apfel kann gut sein."], ["Ein Kaugummi kostet bei mir 20 €.", false, "Ein Kaugummi kostet eher 20 ct, nicht 20 €."],
+    ["Ein Fahrrad kostet bei mir 2 €.", false, "Ein Fahrrad kostet viel mehr, eher 200 €."], ["Eine Tafel Schokolade kostet bei mir 1 €.", true, "Doch: 1 € für eine Tafel Schokolade kann gut sein."],
+    ["Ein Bleistift kostet bei mir 90 €.", false, "Ein Bleistift kostet eher 90 ct."], ["Eine Flasche Milch kostet bei mir 1 € 20 ct.", true, "Doch: Das ist ein guter Preis für Milch."]],
+  [["Azra ist 120 m groß.", false, "Azra ist eher 120 cm groß, 120 m wäre höher als ein Kirchturm."], ["Azra ist 125 cm groß.", true, "Doch: So groß sind viele Kinder in der 2. Klasse."],
+    ["Ein Schulbus ist 12 cm lang.", false, "Ein Schulbus ist eher 12 m lang."], ["Ein Bleistift ist 15 cm lang.", true, "Doch: Ein Bleistift ist ungefähr 15 cm lang."],
+    ["Der Weg zur Schule dauert 5 Stunden.", false, "Für den Schulweg braucht man eher 10 Minuten."], ["Eine Schulstunde dauert 45 Minuten.", true, "Doch: Eine Schulstunde dauert 45 Minuten."],
+    ["Ein Tisch ist 70 cm hoch.", true, "Doch: Ein Tisch ist ungefähr 70 cm hoch."], ["Eine Tür ist 2 cm hoch.", false, "Eine Tür ist eher 2 m hoch."]]];
+// Nachgerechnet: richtig, plus statt minus, oder um einen Zehner daneben
+function nachgerechnet(rng){
+  const plus = ja(rng), [a, b] = plus ? [zz(rng, 21, 59), zz(rng, 11, 39)] : [zz(rng, 41, 89), zz(rng, 11, 39)], r = plus ? a + b : a - b, wie = zz(rng, 0, 3);
+  const falsch = [plus ? a - b : a + b, r - 10, r + 10].filter(v => v >= 1 && v <= 100 && v !== r), x = wie < 2 ? r : eins(rng, falsch);
+  const s = plus ? `In meinem Laden sind ${a} Äpfel. Ich bekomme ${b} dazu. Ich sage: Jetzt sind es ${x}.` : `In meinem Laden sind ${a} Äpfel. ${b} verkaufe ich. Ich sage: Jetzt sind es noch ${x}.`;
+  const f = x === r ? `Doch: ${a} ${plus ? "+" : "−"} ${b} = ${r}.` : x === (plus ? a - b : a + b) ? (plus ? `Wenn Äpfel dazukommen, werden es mehr: ${a} + ${b} = ${r}.` : `Wenn ich verkaufe, werden es weniger: ${a} − ${b} = ${r}.`)
+    : `${a} ${plus ? "+" : "−"} ${b} = ${r}, nicht ${x}.`;
+  return { s, a: x === r, f };
+}
+schritt("m_sach_pruefen", "laden", "hilde", ["stimmt"], "Word problems: check whether an answer can be right",
+  "Ein Eis kostet bei mir 40 €. Kann das sein?", {
+  gen(rng, s){ if(s < 2){ const [satz, a, f] = eins(rng, PLAUSIBEL[s]); return { art: "stimmt", item: { s: satz, a, f, bitte: `Kann das sein? „${satz}“` } }; }
+    return { art: "stimmt", item: { ...nachgerechnet(rng), bitte: "Ich habe gerechnet. Stimmt meine Antwort?" } }; },
+  zeigen: ["Nach dem Rechnen frage ich mich: Kann das sein?", "Ein Eis für 40 € ist viel zu teuer.", "Ein Kind ist 120 cm groß, nicht 120 m.",
+    "Werden es weniger, muss die Antwort kleiner sein als vorher."],
+  merkheft: "Nach dem Rechnen prüfe ich: Kann das überhaupt sein?" });
+
+// Zwei zweistellige Zahlen: erst die Zehner, dann die Einer
+function zehnerErst(a, b, minus){ const Z = b - b % 10, E = b % 10, z = minus ? "−" : "+", m = minus ? a - Z : a + Z;
+  return [minus ? "Nimm erst die Zehner weg, dann die Einer." : "Rechne erst die Zehner dazu, dann die Einer.",
+    [`${a} ${z} ${Z} ${z} ${E}`, `So zerlege ich die ${b}.`], [`${a} ${z} ${Z} = ${m}, ${m} ${z} ${E} = ?`, "Rechne du den letzten Schritt."]]; }
+const BESTELLT = (a, b) => `Lotte bestellt ${a} Brötchen, Mila bestellt ${b}. Wie viele muss ich zusammen backen?`;
+const ABGEHOLT = (a, b) => `Ich habe ${a} Brötchen gebacken. Emil holt ${b} ab. Wie viele sind noch da?`;
+function zeZe(rng, s, ue, minus){ const [a, b] = zeUndZe(rng, ue, minus), text = (minus ? ABGEHOLT : BESTELLT)(a, b);
+  if(s === 0) return { art: "rechenstrich", item: { a, b, ...(minus ? { minus } : {}), bitte: text + (minus ? " Spring am Rechenstrich rückwärts." : " Spring am Rechenstrich.") } };
+  const h9 = s === 2 && ue && b % 10 === 9, hilfe = h9 ? hilfsaufgabe(a, b, minus) : zehnerErst(a, b, minus);
+  return { art: "ergaenzen", item: { a, b, ...(minus ? { op: "-" } : {}), hilfe, lob: h9 ? "Du hast mit der Hilfsaufgabe gerechnet." : "Du hast erst die Zehner und dann die Einer gerechnet.", bitte: text } }; }
+schritt("m_plus_ze_ze", "cafe", "otto", ["rechenstrich", "ergaenzen"], "Add two two-digit numbers, no crossing (34 + 25)",
+  "Lotte bestellt 34 Brötchen, Mila bestellt 25. Wie viele muss ich zusammen backen?", {
+  gen(rng, s){ return zeZe(rng, s, false, false); },
+  zeigen: ["Bei 34 + 25 zerlege ich die 25 in 20 und 5.", "Erst rechne ich die Zehner: 34 + 20 = 54.", "Dann rechne ich die Einer: 54 + 5 = 59.", "Also backe ich 59 Brötchen."],
+  merkheft: "Ich rechne erst die Zehner dazu und dann die Einer." });
+schritt("m_plus_ze_ze_ue", "cafe", "otto", ["rechenstrich", "ergaenzen"], "Add two two-digit numbers across the ten (38 + 27)",
+  "Lotte bestellt 38 Brötchen, Mila bestellt 27. Wie viele muss ich zusammen backen?", {
+  gen(rng, s){ return zeZe(rng, s, true, false); },
+  zeigen: ["Bei 38 + 27 rechne ich erst die Zehner: 38 + 20 = 58.", "Dann kommen noch 7 dazu.", "Von 58 springe ich erst 2 bis 60.", "Dann noch 5 weiter, das sind 65.",
+    "Bei 29 + 45 rechne ich 30 + 45 und dann eins weniger."],
+  merkheft: "Erst die Zehner, dann die Einer, über den Zehner in zwei Sprüngen." });
+schritt("m_minus_ze_ze", "cafe", "otto", ["rechenstrich", "ergaenzen"], "Subtract two-digit numbers, no crossing (78 − 35)",
+  "Ich habe 78 Brötchen gebacken. Emil holt 35 ab. Wie viele sind noch da?", {
+  gen(rng, s){ return zeZe(rng, s, false, true); },
+  zeigen: ["Bei 78 − 35 zerlege ich die 35 in 30 und 5.", "Erst nehme ich die Zehner weg: 78 − 30 = 48.", "Dann nehme ich die Einer weg: 48 − 5 = 43.", "Also sind noch 43 Brötchen da."],
+  merkheft: "Ich nehme erst die Zehner weg und dann die Einer." });
+schritt("m_minus_ze_ze_ue", "cafe", "otto", ["rechenstrich", "ergaenzen"], "Subtract two-digit numbers across the ten (72 − 38)",
+  "Ich habe 72 Brötchen gebacken. Emil holt 38 ab. Wie viele sind noch da?", {
+  gen(rng, s){ return zeZe(rng, s, true, true); },
+  zeigen: ["Bei 72 − 38 nehme ich erst 30 weg, dann bin ich bei 42.", "Dann nehme ich noch 8 weg.", "Erst 2 bis zur 40, dann noch 6 bis 34.",
+    "Bei 90 − 49 rechne ich 90 − 50 und dann eins dazu."],
+  merkheft: "Erst die Zehner weg, dann die Einer, über den Zehner in zwei Sprüngen." });
+
+// Platzhalter: a + ▢ = t, ▢ + a = t, a − ▢ = t
+function luecke(rng, lo = 11){ for(;;){ const a = zz(rng, lo, 79), x = zz(rng, 11, 99 - a); if(a % 10 && (a + x) % 10) return [a, x]; } }
+schritt("m_platzhalter", "cafe", "otto", ["ergaenzen"], "Missing numbers: 34 + ▢ = 62, ▢ + 45 = 80, 71 − ▢ = 50",
+  "Ich brauche 62 Brötchen. 34 sind schon gebacken. Wie viele fehlen noch? 34 + ▢ = 62", {
+  gen(rng, s){ const art = s === 0 ? 0 : s === 1 ? zz(rng, 0, 1) : zz(rng, 0, 2), lob = "Du hast die fehlende Zahl ergänzt.";
+    if(art === 2){ const [t, x] = luecke(rng), a = t + x;
+      return { art: "ergaenzen", item: { a, t, op: "-", einheit: "Brötchen", lob, bitte: `Am Morgen hatte ich ${a} Brötchen. Jetzt sind es noch ${t}. Wie viele habe ich verkauft? ${a} − ▢ = ${t}` } }; }
+    const [a, x] = luecke(rng), t = a + x;
+    if(art === 1) return { art: "ergaenzen", item: { a, t, vorn: true, einheit: "Brötchen", lob, bitte: `Emil holt Brötchen, dann holt Mila noch ${a}. Zusammen sind es ${t}. Wie viele hat Emil? ▢ + ${a} = ${t}` } };
+    return { art: "ergaenzen", item: { a, t, einheit: "Brötchen", lob, bitte: `Ich brauche ${t} Brötchen. ${a} sind schon gebacken. Wie viele fehlen noch? ${a} + ▢ = ${t}` } }; },
+  zeigen: ["Bei 34 + ▢ = 62 ergänze ich von 34 bis 62.", "Erst springe ich 6 bis zur 40.", "Dann springe ich noch 22 bis 62.", "6 und 22 sind zusammen 28.",
+    "Bei 71 − ▢ = 50 ergänze ich von 50 bis 71."],
+  merkheft: "Bei einer Lücke ergänze ich am Rechenstrich, die Umkehraufgabe hilft auch." });
+
+const ERNTE = ["Tomaten", "Äpfel", "Erdbeeren", "Radieschen", "Kirschen"];
+schritt("m_unterschied", "garten", "lotte", ["ergaenzen"], "The difference between two numbers: take away or fill up",
+  "Ich habe 45 Tomaten geerntet, Mila hat 72. Wie viele hat Mila mehr?", {
+  gen(rng, s){ const N = eins(rng, ERNTE); let a, t;
+    do { a = zz(rng, 21, 89); t = a + (s === 0 ? zz(rng, 2, 6) : s === 1 ? zz(rng, 11, 30) : zz(rng, 2, 45)); } while(t > 99 || !(a % 10));
+    return { art: "ergaenzen", item: { a, t, einheit: N, lob: t - a < 10 ? "Bei nahen Zahlen hast du geschickt ergänzt." : "Du hast den Unterschied gefunden.",
+      bitte: `Ich habe ${a} ${N} geerntet, Mila hat ${t}. Wie viele hat Mila mehr?` } }; },
+  zeigen: ["Der Unterschied sagt, wie viel eine Zahl mehr ist als die andere.", "Bei 45 und 72 ergänze ich von 45 bis 72.", "Erst 5 bis zur 50, dann noch 22.",
+    "Der Unterschied ist 27.", "Bei 79 und 83 ergänze ich, das geht schnell."],
+  merkheft: "Den Unterschied finde ich durch Abziehen oder durch Ergänzen." });
+
+// Wichtig oder unwichtig: Emils Post-Zettel mit einer Zahl, die man nicht braucht
+const POST = [
+  (a, b, c) => ({ t: `Emil trägt jeden Tag ${c} Stunden Post aus. Heute hat er ${a} Briefe. ${b} bringt er zu Lotte. Wie viele Briefe hat er noch?`, minus: true, unit: "Briefe", dat: "Briefen",
+    k: [`${a} Briefe`, `${b} bringt er`, "noch"], weg: `${c} Stunden`, op3: `Emil hat ${a} Briefe und gibt ${b} ab.` }),
+  (a, b, c) => ({ t: `Im Postamt stehen ${c} Regale. In einem liegen ${a} Pakete. Emil legt ${b} Pakete dazu. Wie viele Pakete liegen jetzt darin?`, minus: false, unit: "Pakete", dat: "Paketen",
+    k: [`${a} Pakete`, `${b} Pakete dazu`, "jetzt"], weg: `${c} Regale`, op3: `Im Regal liegen ${a} Pakete, und ${b} kommen dazu.` }),
+  (a, b, c) => ({ t: `Emil ist ${c} Jahre alt. Er hat ${a} Briefmarken. Er kauft noch ${b} Briefmarken. Wie viele Briefmarken hat er jetzt?`, minus: false, unit: "Briefmarken", dat: "Briefmarken",
+    k: [`${a} Briefmarken`, `noch ${b} Briefmarken`, "jetzt"], weg: `${c} Jahre`, op3: `Emil hat ${a} Briefmarken und kauft ${b} dazu.` }),
+  (a, b, c) => ({ t: `Emils Fahrrad hat ${c} Gänge. In seiner Tasche sind ${a} Karten. ${b} wirft er in die Briefkästen. Wie viele Karten sind noch in der Tasche?`, minus: true, unit: "Karten", dat: "Karten",
+    k: [`${a} Karten`, `${b} wirft er`, "noch"], weg: `${c} Gänge`, op3: `In der Tasche sind ${a} Karten, und ${b} kommen heraus.` })];
+schritt("m_sach_wichtig", "post", "emil", ["textfrage", "sachaufgabe"], "Word problems: find what is important and what is not",
+  "Auf meinem Zettel steht eine Zahl, die man nicht braucht. Welche ist es?", {
+  gen(rng, s){ for(;;){ const c = zz(rng, 3, 9), a = s === 0 ? zz(rng, 21, 49) : zz(rng, 31, 89), b = zz(rng, 11, s === 0 ? 19 : 29), p = eins(rng, POST)(a, b, c);
+    const res = p.minus ? a - b : a + b; if(res < 1 || res > 100 || a % 10 === 0 || b % 10 === 0) continue;
+    if(s === 0 || (s === 1 && ja(rng))){ const o = misch(rng, [p.weg.split(" ")[0], String(a), String(b)]), x = o.indexOf(String(c));
+      const text = p.t.split(/(?<=[.?]) /);
+      return { art: "textfrage", item: { text, q: "Welche Zahl brauchst du für die Frage nicht?", o, a: x, s: text.length - 1,
+        warum: o.map(z => z === String(c) ? "" : `Die ${z} brauchst du zum Rechnen.`), lob: "Du hast die Zahl gefunden, die nichts mit der Frage zu tun hat.",
+        hilfe: ["Lies die Frage am Ende: Wonach wird gefragt?", "Hier ist die Frage, welche Zahlen passen zu ihr?", `Welche Zahl hat nichts mit den ${p.dat} zu tun?`],
+        bitte: "Auf meinem Zettel steht eine Zahl, die man nicht braucht. Welche ist es?" } }; }
+    const z = p.minus ? "−" : "+", ops = [`${a} ${z} ${b}`, `${a} ${z} ${c}`, `${a} ${p.minus ? "+" : "−"} ${b}`];
+    return { art: "sachaufgabe", item: { t: p.t, k: p.k, ops, res, unit: p.unit, op3: p.op3,
+      bad: { 1: `Die ${p.weg} haben mit der Frage nichts zu tun.`, 2: p.minus ? `Mit ${a} + ${b} wären es mehr ${p.unit} als vorher.` : `Mit ${a} − ${b} wären es weniger ${p.unit} als vorher.` },
+      r1: "Rechne erst die Zehner, dann die Einer.", s2: `${a} ${z} ${b - b % 10} = ${p.minus ? a - b + b % 10 : a + b - b % 10}`, s3: `Jetzt noch ${b % 10} ${p.minus ? "weg" : "dazu"}.`,
+      gegenprobe: x => p.minus ? `Ich mache die Probe: ${x} + ${b} = ${x + b}. Es waren aber ${a}.` : `Ich mache die Probe: ${x} − ${b} = ${x - b}. Es waren aber ${a}.`, bitte: p.t } }; } },
+  zeigen: ["Ich lese die Frage am Ende zuerst.", "Dann suche ich die Zahlen, die zur Frage passen.", "Emils Alter hat mit seinen Briefmarken nichts zu tun.", "Diese Zahl streiche ich durch."],
+  merkheft: "Ich suche die Zahlen, die zur Frage passen, die anderen brauche ich nicht." });
+
+// Tabellen: Fridolin zählt Fische, Azra spart
+const TABELLEN = [
+  { oben: "Woche", unten: "Euro", frage: x => `Nach wie vielen Wochen hat Azra ${x} €?`, bitte: "Azra spart jede Woche gleich viel. Was fehlt in der Tabelle?" },
+  { oben: "Tag", unten: "Fische", frage: x => `An welchem Tag habe ich ${x} Fische gesehen?`, bitte: "Ich sehe jeden Tag mehr Fische im See. Was fehlt in meiner Tabelle?" },
+  { oben: "Tag", unten: "Seerosen", frage: x => `An welchem Tag blühen ${x} Seerosen?`, bitte: "Jeden Tag blühen mehr Seerosen. Was fehlt in meiner Tabelle?" }];
+schritt("m_sach_tabelle", "see", "fridolin", ["tabelle"], "Word problems: a table helps",
+  "Ich sehe jeden Tag mehr Fische im See. Was fehlt in meiner Tabelle?", {
+  gen(rng, s){ const T = eins(rng, TABELLEN), n = s === 0 ? 5 : 6, d = eins(rng, s === 0 ? [2, 5, 10] : [3, 4, 5, 6, 8, 10, 12]), start = s === 2 && ja(rng) ? zz(rng, 1, 9) * 2 : d;
+    const zeilen = [[T.oben, ...bis(1, n)], [T.unten, ...bis(0, n - 1).map(i => start + i * d)]];
+    if(s === 2 && ja(rng)){ const c = zz(rng, 4, n); return { art: "tabelle", item: { zeilen, luecke: [0, c], res: c, frage: T.frage(zeilen[1][c]), bitte: T.frage(zeilen[1][c]) } }; }
+    const c = s === 0 ? zz(rng, 2, n - 1) : n;
+    return { art: "tabelle", item: { zeilen, luecke: [1, c], res: zeilen[1][c], bitte: T.bitte } }; },
+  zeigen: ["In der Tabelle steht oben die Woche, unten das Geld.", "Jede Woche kommen 5 € dazu.", "5, 10, 15, 20, also kommt danach 25.", "So finde ich auch, wann es 30 € sind."],
+  merkheft: "In einer Tabelle schaue ich, wie viel jedes Mal dazukommt." });
+
+// Umkehraufgabe als Probe: Milas Rechnungen am Hügel
+schritt("m_umkehr_probe", "huegel", "mila", ["stimmt"], "Check with the inverse sum; find mistakes",
+  "Ich habe 72 − 38 = 34 gerechnet. Mach die Probe mit der Umkehraufgabe. Stimmt das?", {
+  gen(rng, s){ const minus = ja(rng); let a, b;
+    for(;;){ [a, b] = zeUndZe(rng, s > 0, minus); if(minus ? a - b >= 11 : a + b <= 99) break; }
+    const r = minus ? a - b : a + b, wahr = ja(rng), d = s === 2 ? eins(rng, [-2, -1, 1, 2]) : eins(rng, [-10, 10]), x = wahr ? r : r + d > 100 ? r - Math.abs(d) : r + d, z = minus ? "−" : "+", u = minus ? "+" : "−";
+    const probe = minus ? x + b : x - b;
+    return { art: "stimmt", item: { s: `Mila rechnet: ${a} ${z} ${b} = ${x}.`, a: wahr,
+      f: wahr ? `Doch: Die Probe ${x} ${u} ${b} = ${a} geht auf.` : `Die Probe ${x} ${u} ${b} ergibt ${probe}, nicht ${a}.`,
+      bitte: `Ich habe ${a} ${z} ${b} = ${x} gerechnet. Mach die Probe mit ${x} ${u} ${b}. Stimmt das?` } }; },
+  zeigen: ["Ich habe 72 − 38 = 34 gerechnet.", "Zur Probe rechne ich umgekehrt: 34 + 38.", "Kommt 72 heraus, stimmt meine Rechnung.", "Kommt etwas anderes heraus, rechne ich noch einmal."],
+  merkheft: "Mit der Umkehraufgabe mache ich die Probe: 34 + 38 = 72." });
+
+// Zauberquadrate am Basteltisch: aus dem Lo-Shu-Quadrat gedreht, gespiegelt, verschoben; manchmal zwei Fliesen vertauscht
+const LO_SHU = [2, 7, 6, 9, 5, 1, 4, 3, 8];
+const DREH = q => [6, 3, 0, 7, 4, 1, 8, 5, 2].map(i => q[i]), SPIEGEL = q => [2, 1, 0, 5, 4, 3, 8, 7, 6].map(i => q[i]);
+const LINIEN = [[[0, 1, 2], "die obere Reihe"], [[3, 4, 5], "die mittlere Reihe"], [[6, 7, 8], "die untere Reihe"], [[0, 3, 6], "die linke Spalte"],
+  [[1, 4, 7], "die mittlere Spalte"], [[2, 5, 8], "die rechte Spalte"], [[0, 4, 8], "eine Schräge"], [[2, 4, 6], "die andere Schräge"]];
+const quadratHTML = q => `<span style="display:grid;grid-template-columns:repeat(3,72px);gap:6px;justify-content:center;margin:0 auto 14px">${q.map(n =>
+  `<span style="display:block;background:#fff6d8;border:3px solid #e0b07a;border-radius:10px;font-size:34px;line-height:64px;text-align:center">${n}</span>`).join("")}</span>`;
+schritt("m_zauberquadrat", "basteln", "katze", ["stimmt", "ergaenzen"], "Magic squares and number patterns (31 + 19 = 30 + 20)",
+  "Ich lege Zauber-Fliesen. In jeder Reihe, Spalte und Schräge ist die Summe gleich. Stimmt das hier?", {
+  gen(rng, s){
+    if(s === 0 || (s === 2 && ja(rng, 1 / 3))){ const a = 10 * zz(rng, 2, s === 0 ? 5 : 7), b = 10 * zz(rng, 1, (100 - a) / 10 - 1), t = a + b, k = zz(rng, 2, s === 0 ? 3 : 4);
+      return { art: "ergaenzen", item: { a: a + k, t, lob: "Du hast gesehen: Was die eine Zahl mehr hat, hat die andere weniger.",
+        hilfe: [`Was fällt dir auf: ${a} + ${b}, ${a + 1} + ${b - 1}?`, [`${a} + ${b} = ${t}`, "Die Summe bleibt immer gleich."], [`${a + k} + ? = ${t}`, `Die erste Zahl ist ${k} größer, also ist die zweite ${k} kleiner.`]],
+        bitte: `${a} + ${b} = ${t}, ${a + 1} + ${b - 1} = ${t}. Wie geht es weiter? ${a + k} + ▢ = ${t}` } }; }
+    const mal = s === 2 ? zz(rng, 1, 2) : 1, plus = zz(rng, 0, s === 2 ? 20 : 10); let q = LO_SHU.map(n => n * mal + plus);
+    for(let i = zz(rng, 0, 3); i > 0; i--) q = DREH(q); if(ja(rng)) q = SPIEGEL(q);
+    const summe = q[0] + q[1] + q[2], zauber = ja(rng);
+    if(!zauber){ const i = zz(rng, 0, 8); let j; do j = zz(rng, 0, 8); while(j === i || q[j] === q[i]); [q[i], q[j]] = [q[j], q[i]]; }
+    const echt = LINIEN.every(([l]) => l.reduce((x, i) => x + q[i], 0) === summe), anders = LINIEN.find(([l]) => l.reduce((x, i) => x + q[i], 0) !== summe);
+    return { art: "stimmt", item: { s: quadratHTML(q) + `Das ist ein Zauberquadrat mit der Zauberzahl ${summe}.`, q, a: echt,
+      f: echt ? `Doch: Jede Reihe, jede Spalte und beide Schrägen ergeben ${summe}.` : `${anders[1][0].toUpperCase() + anders[1].slice(1)} ergibt ${anders[0].reduce((x, i) => x + q[i], 0)}, nicht ${summe}.`,
+      bitte: `Ich lege Zauber-Fliesen. In jeder Reihe, Spalte und Schräge soll ${summe} herauskommen. Ist das ein Zauberquadrat?` } }; },
+  zeigen: ["In einem Zauberquadrat hat jede Reihe dieselbe Summe.", "Auch jede Spalte und beide Schrägen haben sie.", "Ich rechne jede Reihe nach.",
+    "Bei 30 + 20 und 31 + 19 kommt beides Mal 50 heraus.", "Eine Zahl wird größer, die andere genauso viel kleiner."],
+  merkheft: "Im Zauberquadrat ergibt jede Reihe, jede Spalte und jede Schräge dieselbe Zahl." });
+
 // ---------- Geld (Ticket 33, Welt der Zahl Kap. 6): Münzen und Scheine bis 50 €, gemischte Schreibweise wie in der Schule ----------
 const betrag = c => c < 100 ? c + " ct" : c % 100 ? `${Math.floor(c / 100)} € ${c % 100} ct` : c / 100 + " €";
 const GELD = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000];
@@ -1287,6 +1455,134 @@ schritt("d_abschreiben_kontrolle", "post", "emil", ["fehler"], "Find mistakes by
       return { art: "fehler", item: { v, c, bitte: "Ich habe deinen Brief abgeschrieben. Ein Wort ist anders als in der Vorlage. Findest du es?" } }; } },
   zeigen: ["Ich lege die Vorlage neben die Abschrift.", "Ich vergleiche Wort für Wort.", "Bei jedem Wort schaue ich auf jeden Buchstaben.", "Ist ein Wort anders, habe ich den Fehler gefunden."],
   merkheft: "Ich vergleiche meine Abschrift Wort für Wort mit der Vorlage." });
+
+// ---------- Karibu Kap. 6 (Ticket 39): Schreibplan, Märchenfiguren, Verben, Personalform, Verben ableiten ----------
+// Schreibplan im Tagebuch: Ideen zu Wer?, Wo?, Was passiert?
+const PLAN_KOERBE = { wer: ["👤 Wer?", "In diesen Korb kommt, wer in der Geschichte vorkommt."], wo: ["📍 Wo?", "In diesen Korb kommt, wo die Geschichte spielt."],
+  was: ["💥 Was passiert?", "In diesen Korb kommt, was in der Geschichte passiert."] };
+// Tipp unter der Karte (Stufe 2 der Hilfe): die Karte in einem Satz, ohne den Korb zu nennen
+const PLAN_IDEEN = { wer: [["🐉", "ein kleiner Drache", "Ein kleiner Drache wacht auf."], ["👸", "eine mutige Prinzessin", "Eine mutige Prinzessin lacht."], ["🐱", "eine Katze mit Hut", "Eine Katze mit Hut winkt."], ["🦊", "ein schlauer Fuchs", "Ein schlauer Fuchs schleicht herum."], ["🧒", "ein Kind mit Taschenlampe", "Ein Kind mit Taschenlampe flüstert."]],
+  wo: [["🏰", "im Schloss", "Alles beginnt im Schloss."], ["🌲", "im dunklen Wald", "Alles beginnt im dunklen Wald."], ["🏝️", "auf einer Insel", "Alles beginnt auf einer Insel."], ["☁️", "im Traumland", "Alles beginnt im Traumland."], ["🌊", "am Meer", "Alles beginnt am Meer."]],
+  was: [["💎", "verliert seinen Schatz", "Plötzlich verliert jemand seinen Schatz."], ["🌧️", "ein Sturm zieht auf", "Plötzlich zieht ein Sturm auf."], ["🗺️", "findet eine Schatzkarte", "Plötzlich findet jemand eine Schatzkarte."], ["🔑", "der Schlüssel ist weg", "Plötzlich ist der Schlüssel weg."], ["🎈", "fliegt mit einem Ballon davon", "Plötzlich fliegt jemand mit einem Ballon davon."]] };
+schritt("d_schreibplan", "tagebuch", "katze", ["muell"], "Plan a story with a writing plan (who, where, what happens)",
+  "Ich will eine Traum-Geschichte schreiben. Hilfst du mir beim Schreibplan? Was gehört zu Wer, Wo und Was passiert?", {
+  gen(rng, s){ const K = ["wer", "wo", "was"], t = K.map(k => [...eins(rng, PLAN_IDEEN[k]), k]);
+    while(t.length < 3 + s){ const k = eins(rng, K), x = eins(rng, PLAN_IDEEN[k]); if(!t.some(d => d[1] === x[1])) t.push([...x, k]); }
+    return { art: "muell", item: { t: misch(rng, t).map(([e, n, m, k]) => [e, n, k, m]), koerbe: PLAN_KOERBE, h1: "Frag dich bei jeder Karte: Ist das eine Figur, ein Ort oder etwas, das passiert?",
+      lob: "Jetzt hast du einen Plan für deine Geschichte.", dank: "Danke! Mit diesem Plan schreibe ich meine Geschichte ins Heft.",
+      bitte: "Ich will eine Traum-Geschichte schreiben. Hilfst du mir beim Schreibplan? Was gehört zu Wer, Wo und Was passiert?" } }; },
+  zeigen: ["Bevor ich schreibe, mache ich einen Plan.", "Wer kommt vor: ein kleiner Drache.", "Wo spielt es: im Traumland.", "Was passiert: Der Drache verliert seinen Schatz.",
+    "Mit dem Plan schreibe ich meine Geschichte ins Heft."],
+  merkheft: "Vor dem Schreiben plane ich: Wer kommt vor, wo spielt es, was passiert?" });
+
+// Märchen (Grimm, nacherzählt): kurze Texte, Fragen zu den Figuren (wie eine Figur ist, steht nie wörtlich da: Azra schließt es aus dem, was sie tut);
+// Stufe 2 auch: Woran erkennt man ein Märchen?
+const MAERCHEN = [
+  { text: ["Rotkäppchen trägt eine rote Kappe.", "Sie bringt der Großmutter Kuchen.", "Im Wald trifft sie den Wolf.", "Der Wolf fragt sie freundlich aus und rennt heimlich zur Großmutter."],
+    fragen: [{ q: "Was trägt Rotkäppchen?", o: ["eine rote Kappe", "einen blauen Hut", "eine Krone", "eine Brille"], s: 0 },
+      { q: "Wie ist der Wolf?", o: ["listig", "ängstlich", "müde", "traurig"], s: 3, figur: true }] },
+  { text: ["Hänsel und Gretel verlaufen sich im Wald.", "Sie finden ein Haus aus Lebkuchen.", "Darin wohnt eine Hexe, die Hänsel in einen Käfig sperrt.", "Gretel hat keine Angst und befreit ihren Bruder."],
+    fragen: [{ q: "Woraus ist das Haus?", o: ["aus Lebkuchen", "aus Stein", "aus Glas", "aus Holz"], s: 1 },
+      { q: "Wie ist Gretel?", o: ["mutig", "faul", "böse", "frech"], s: 3, figur: true }, { q: "Wie ist die Hexe?", o: ["böse", "freundlich", "lustig", "müde"], s: 2, figur: true }] },
+  { text: ["Eine Prinzessin spielt am Brunnen mit einer goldenen Kugel.", "Die Kugel fällt ins Wasser.", "Ein Frosch holt sie wieder heraus.", "Die Prinzessin bedankt sich nicht und läuft einfach weg."],
+    fragen: [{ q: "Wer holt die Kugel?", o: ["ein Frosch", "die Prinzessin", "ein Fisch", "der König"], s: 2 },
+      { q: "Wie ist die Prinzessin zuerst?", o: ["unfreundlich", "mutig", "hungrig", "fleißig"], s: 3, figur: true }] },
+  { text: ["Ein Esel, ein Hund, eine Katze und ein Hahn wandern nach Bremen.", "Sie wollen Musiker werden.", "Im Wald finden sie ein Haus voller Räuber.", "Mit lautem Krach jagen sie die Räuber fort."],
+    fragen: [{ q: "Was wollen die Tiere werden?", o: ["Musiker", "Räuber", "Bäcker", "Könige"], s: 1 },
+      { q: "Wie sind die Tiere zusammen?", o: ["mutig", "faul", "ängstlich", "traurig"], s: 3, figur: true }] }];
+const MAERCHEN_STIMMT = [["Viele Märchen fangen mit „Es war einmal“ an.", true, "Doch: „Es war einmal“ ist ein typischer Märchenanfang."],
+  ["In Märchen gibt es oft Zauberei.", true, "Doch: In Märchen wird oft gezaubert, zum Beispiel von einer Hexe."],
+  ["In Märchen sind die Figuren oft gut oder böse.", true, "Doch: Die Hexe ist böse, Gretel ist gut und mutig."],
+  ["Viele Märchen enden mit „Und wenn sie nicht gestorben sind …“", true, "Doch: So enden viele Märchen."],
+  ["Ein Märchen ist ein Bericht aus der Zeitung.", false, "Ein Märchen ist eine erfundene Geschichte, kein Bericht."],
+  ["In Märchen können Tiere nie sprechen.", false, "In Märchen sprechen Tiere oft, wie der Wolf bei Rotkäppchen."],
+  ["Die Hexe bei Hänsel und Gretel ist freundlich.", false, "Die Hexe ist böse, sie will die Kinder fangen."],
+  ["Der Wolf bei Rotkäppchen ist listig.", true, "Doch: Der Wolf ist listig, er fragt Rotkäppchen aus."]];
+schritt("d_lesen_figur", "regal", "katze", ["textfrage", "stimmt"], "Read fairy tales and describe the characters",
+  "Lies das Märchen. Wie ist der Wolf?", {
+  gen(rng, s){
+    if(s === 2 && ja(rng)){ const [satz, a, f] = eins(rng, MAERCHEN_STIMMT); return { art: "stimmt", item: { s: satz, a, f, bitte: `Stimmt das? „${satz}“` } }; }
+    const m = eins(rng, MAERCHEN), fr = eins(rng, m.fragen.filter(f => s === 0 ? !f.figur : s === 1 ? f.figur : true)), o = misch(rng, [0, 1, 2, 3]);
+    return { art: "textfrage", item: { text: m.text, q: fr.q, o: o.map(i => fr.o[i]), a: o.indexOf(0), s: fr.s, lob: fr.figur ? "Du hast genau gelesen, wie die Figur ist." : "Du hast im Märchen nachgeschaut.",
+      ...(fr.figur ? { hilfe: ["Überleg: Was tut die Figur im Märchen?", "Hier steht, was die Figur tut.", "Ich lese dir die Stelle vor. Welches Wort passt dazu?"] } : {}),
+      bitte: `Lies das Märchen. ${fr.q}` } }; },
+  zeigen: ["Viele Märchen fangen mit „Es war einmal“ an.", "In Märchen gibt es gute und böse Figuren.", "Der Wolf fragt Rotkäppchen heimlich aus, also ist er listig.",
+    "Wie eine Figur ist, merke ich an dem, was sie tut."],
+  merkheft: "Ich beschreibe eine Figur: wie sie aussieht und wie sie ist." });
+
+// Verben (Tu-Wörter) in Hildes Laden: [Bild, Wort] in der Grundform; Nomen mit Artikel als Tipp
+const VERBEN = [["🏃", "laufen"], ["🍽️", "essen"], ["😴", "schlafen"], ["🎤", "singen"], ["🎨", "malen"], ["📖", "lesen"], ["🤸", "springen"], ["🏊", "schwimmen"],
+  ["🧁", "backen"], ["🧸", "spielen"], ["💃", "tanzen"], ["🍳", "kochen"], ["✍️", "schreiben"], ["🧹", "fegen"]];
+const NOMEN_VERB = [["🍎", "Apfel", "der Apfel"], ["🐶", "Hund", "der Hund"], ["🪑", "Stuhl", "der Stuhl"], ["🌸", "Blume", "die Blume"], ["📚", "Buch", "das Buch"],
+  ["🧺", "Korb", "der Korb"], ["🚲", "Fahrrad", "das Fahrrad"], ["🐱", "Katze", "die Katze"], ["🎈", "Ballon", "der Ballon"], ["☕", "Tasse", "die Tasse"]];
+const VERB_KOERBE = { verb: ["🏃 Tu-Wort", "In diesen Korb kommen Wörter, die sagen, was man tut."], nomen: ["📦 Nomen", "In diesen Korb kommen Namen für Dinge, Tiere und Menschen."] };
+schritt("d_verben", "laden", "hilde", ["muell", "raus"], "Verbs: words for doing (basic form)",
+  "Ich sortiere meine Wortkarten. Ist das ein Tu-Wort oder ein Nomen?", {
+  gen(rng, s){
+    if(s === 1 && ja(rng)){ const v = ziehe(rng, VERBEN, 3), n = eins(rng, NOMEN_VERB), c = misch(rng, [...v.map(x => [x[0], x[1]]), [n[0], n[1]]]);
+      return { art: "raus", item: { c, x: c.findIndex(x => x[1] === n[1]), tipp: "Drei sind Tu-Wörter, sie sagen, was man tut.", bitte: "Drei Wortkarten sind Tu-Wörter, eine nicht. Tipp auf die, die nicht dazupasst." } }; }
+    const nv = 2 + s, t = [...ziehe(rng, VERBEN, nv).map(([e, w]) => [e, w, "verb", `man kann ${w}`]), ...ziehe(rng, NOMEN_VERB, 2).map(([e, w, a]) => [e, w, "nomen", a])];
+    return { art: "muell", item: { t: misch(rng, t), koerbe: VERB_KOERBE, h1: "Kannst du es tun? Dann ist es ein Tu-Wort.", lob: "Du hast bei jedem Wort überlegt, ob man es tun kann.",
+      dank: "Danke! Jetzt sind meine Wortkarten sortiert.", bitte: "Ich sortiere meine Wortkarten. Ist das ein Tu-Wort oder ein Nomen?" } }; },
+  zeigen: ["Verben sagen, was jemand tut.", "Laufen, singen und malen sind Verben.", "Man nennt sie auch Tu-Wörter.", "In der Grundform enden sie meistens auf en.", "Tisch ist kein Verb, denn einen Tisch kann man nicht tun."],
+  merkheft: "Verben sagen, was jemand tut, in der Grundform enden sie meistens auf en." });
+
+// Personalform: ich spiele, du spielst, er spielt, wir spielen, ihr spielt, sie spielen
+const PF_VERBEN = [["spielen", "spiel", "Ball"], ["malen", "mal", "ein Bild"], ["singen", "sing", "ein Lied"], ["kochen", "koch", "Suppe"], ["bauen", "bau", "eine Burg"],
+  ["lernen", "lern", "Lesen"], ["holen", "hol", "die Post"], ["kaufen", "kauf", "Äpfel"], ["hören", "hör", "Musik"], ["backen", "back", "Kuchen"]];
+const PF_ENDE = { ich: "e", du: "st", er: "t", wir: "en", ihr: "t" };
+const PF_PASST = { e: "ich", st: "du", t: "er, sie, es und ihr", en: "wir und sie" };
+schritt("d_personalform", "laden", "hilde", ["textfrage"], "Verbs in the personal form (ich gehe, du gehst)",
+  "Auf meiner Tafel fehlt ein Wort: Du ___ ein Lied. Welches passt?", {
+  gen(rng, s){ const [grund, stamm, was] = eins(rng, PF_VERBEN), pron = eins(rng, s === 0 ? ["ich", "du", "wir"] : ["ich", "du", "er", "wir", "ihr"]); // „Sie“ am Satzanfang passte auch zu -en
+    const name = s === 2 && ja(rng) ? eins(rng, [["Lotte", "t"], ["Die Kinder", "en"], ["Emil und Mila", "en"], ["Otto", "t"]]) : null;
+    const wer = name ? name[0] : pron[0].toUpperCase() + pron.slice(1), ende = name ? name[1] : PF_ENDE[pron], o = misch(rng, ["e", "st", "t", "en"]);
+    return { art: "textfrage", item: { text: ["Hilde schreibt Sätze auf ihre Tafel.", `${wer} ___ ${was}.`], q: `Welche Form von „${grund}“ passt in die Lücke?`,
+      o: o.map(e => stamm + e), a: o.indexOf(ende), s: 1, warum: o.map(e => e === ende ? "" : `„${stamm + e}“ passt zu ${PF_PASST[e]}.`),
+      hilfe: ["Sprich den Satz mit jedem Wort leise, welches klingt richtig?", "Hier ist der Satz mit der Lücke.", `Zu „${name ? name[0].replace(/^Die /, "die ") : pron}“ gehört die Endung ${ende}.`],
+      lob: "Du hast die passende Personalform gefunden.", bitte: `Auf meiner Tafel fehlt ein Wort: ${wer} ___ ${was}. Welche Form von „${grund}“ passt?` } }; },
+  zeigen: ["Das Verb verändert sich, je nachdem, wer etwas tut.", "Ich spiele, du spielst, er spielt.", "Wir spielen, ihr spielt, sie spielen.", "Die Grundform ist spielen."],
+  merkheft: "Ich spiele, du spielst, er spielt: Die Endung passt zu der Person." });
+
+// Verben ableiten: er le_t → le-gen; er ko_t → kom-men; sie ge_t → ge-hen
+// [Bild, Person, Wortanfang, Ende, fehlt, falsch, Grundform Silbe 1, Silbe 2]
+const V_WEICH = [["🛏️", "er", "le", "t", "g", "k", "le", "gen"], ["🐦", "es", "flie", "t", "g", "k", "flie", "gen"], ["❓", "er", "fra", "t", "g", "k", "fra", "gen"],
+  ["👉", "sie", "zei", "t", "g", "k", "zei", "gen"], ["✏️", "er", "schrei", "t", "b", "p", "schrei", "ben"], ["👍", "sie", "lo", "t", "b", "p", "lo", "ben"],
+  ["🏠", "er", "blei", "t", "b", "p", "blei", "ben"], ["🌱", "sie", "le", "t", "b", "p", "le", "ben"]];
+const V_HART = [["💭", "er", "den", "t", "k", "g", "den", "ken"], ["👋", "sie", "win", "t", "k", "g", "win", "ken"], ["🎁", "er", "schen", "t", "k", "g", "schen", "ken"],
+  ["🥤", "sie", "trin", "t", "k", "g", "trin", "ken"], ["🚗", "er", "hu", "t", "p", "b", "hu", "pen"]];
+const V_DOPPEL = [["🚶", "er", "ko", "t", "mm", "m", "kom", "men"], ["⚽", "sie", "ro", "t", "ll", "l", "rol", "len"], ["🏃", "er", "re", "t", "nn", "n", "ren", "nen"],
+  ["🤝", "sie", "ke", "t", "nn", "n", "ken", "nen"], ["🏊", "er", "schwi", "t", "mm", "m", "schwim", "men"], ["🐝", "es", "bru", "t", "mm", "m", "brum", "men"], ["🥛", "sie", "fü", "t", "ll", "l", "fül", "len"]];
+const V_EINFACH = [["🐕", "er", "ho", "t", "l", "ll", "ho", "len"], ["🎨", "sie", "ma", "t", "l", "ll", "ma", "len"], ["🧸", "er", "spie", "t", "l", "ll", "spie", "len"]];
+const V_H = [["🚶‍♀️", "sie", "ge", "t", "h", "", "ge", "hen"], ["🧍", "er", "ste", "t", "h", "", "ste", "hen"], ["🌀", "es", "dre", "t", "h", "", "dre", "hen"],
+  ["🧵", "sie", "nä", "t", "h", "", "nä", "hen"], ["🌸", "sie", "blü", "t", "h", "", "blü", "hen"]];
+function verbItem([pic, wer, vor, nach, ans, falsch, s1, s2], merke){
+  const leer = ans === "h" ? "ein h oder nichts" : `${ans} oder ${falsch}`, fehlt = `${wer} ${vor}_${nach}`;
+  return { pic, pre: `${wer} ${vor}`, post: nach, ans, tiles: [ans, falsch], lob: "Du hast das Verb in die Grundform gebracht.",
+    hilfe: ["Sag das Verb in der Grundform: wir …", [`${fehlt} → wir ${vor}…en`, "Sprich die Grundform langsam in Silben."], [`wir ${s1} – ${s2}`, merke(ans, s1, s2), `${s1} – ${s2}`]],
+    bitte: `Auf dem Paket steht: ${fehlt}. Kommt ${leer} hinein?` }; }
+schritt("d_verben_inlaut", "post", "emil", ["weiterschwingen"], "Verb spelling: er legt – legen, sie lebt – leben",
+  "Auf dem Paket steht: er le_t. Kommt g oder k hinein?", {
+  // hart (k, p) kommt auf jeder Stufe vor, damit nie „immer g“ reicht; b/p erst ab Stufe 1
+  gen(rng, s){ const weich = V_WEICH.filter(v => s > 0 || v[4] === "g"), hart = V_HART.filter(v => s > 0 || v[4] === "k");
+    return { art: "weiterschwingen", item: verbItem(eins(rng, ja(rng, .6) ? weich : hart), (a, x, y) => `In ${x} – ${y} hörst du das ${a} deutlich.`) }; },
+  zeigen: ["Bei er legt hört man am Ende ein k.", "Ich sage die Grundform: wir le – gen.", "Jetzt höre ich deutlich ein g.", "Darum schreibe ich er legt mit g.", "Genauso: sie lebt, wir le – ben."],
+  merkheft: "Höre ich g oder k, b oder p nicht genau, sage ich die Grundform." });
+schritt("d_verben_doppel_h", "post", "emil", ["weiterschwingen"], "Verb spelling: er kommt – kommen, er geht – gehen",
+  "Auf dem Paket steht: er ko_t. Kommt mm oder m hinein?", {
+  // doppelt oder einfach, h oder nichts: die Grundform entscheidet; einfache Mitlaute auf jeder Stufe (nie „immer doppelt“), h ab Stufe 1
+  gen(rng, s){ const pool = s < 2 ? (ja(rng, .4) ? V_EINFACH : V_DOPPEL) : eins(rng, [V_DOPPEL, V_EINFACH, V_H]);
+    const merke = (a, x, y) => a === "h" ? "Am Anfang der zweiten Silbe steht ein h." : a.length === 2 ? `Den Laut hörst du am Ende der ersten und am Anfang der zweiten Silbe.` : `Der Laut steht nur einmal, am Anfang der zweiten Silbe.`;
+    return { art: "weiterschwingen", item: verbItem(eins(rng, s === 1 && ja(rng, .3) ? V_H : pool), merke) }; },
+  zeigen: ["Bei er kommt sage ich die Grundform: wir kom – men.", "Ich höre das m zweimal, also schreibe ich mm.", "Bei er geht sage ich: wir ge – hen.",
+    "Jetzt höre ich das h, also schreibe ich er geht mit h."],
+  merkheft: "Doppelte Mitlaute und das h höre ich in der Grundform: kom – men, ge – hen." });
+
+schritt("d_va_tempo", "tagebuch", "katze", [], "Write joined handwriting fluently and at a good pace",
+  "Schreib einen kurzen Satz dreimal in Schreibschrift ab, jedes Mal ein bisschen flüssiger.", {
+  offline: true,
+  zeigen: ["Vor dem Schreiben lockere ich meine Hand.", "Ich halte den Stift locker, nicht zu fest.", "Ich schreibe die Wörter in einem Zug.", "Flüssig heißt nicht hastig, lesen muss man es noch."],
+  merkheft: "Ich schreibe locker und flüssig, aber immer noch gut lesbar." });
 
 // ==================== HSU ====================
 const REGELN = [

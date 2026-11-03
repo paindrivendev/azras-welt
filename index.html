@@ -198,12 +198,12 @@ section#eltern .muted{color:var(--muted)} section#eltern .ok{color:#2f7d4f;font-
 @media (orientation:portrait){ .wb-tasten{grid-template-columns:repeat(6,minmax(64px,1fr))} .wb-oben{gap:20px} }
 
 /* Küche (Ticket 22): Rezeptkarten, Kochstelle, Gäste, Hildes Laden */
-#kochen,#pflege,#kiste,#beet,#malen,#puppenhaus,#markt{position:fixed;z-index:6;inset:16px;display:flex}
-#kochen .wk,#pflege .wk,#kiste .wk,#beet .wk,#malen .wk,#puppenhaus .wk,#markt .wk{flex:1;display:flex;flex-direction:column;gap:12px;overflow-y:auto;padding:16px;border-radius:var(--r);background:#fff8ee;box-shadow:var(--shadow);position:relative}
-#kochen .aus,#pflege .aus,#kiste .aus,#beet .aus,#malen .aus,#puppenhaus .aus,#markt .aus{position:absolute;top:12px;right:12px;z-index:2}
-#kochen .bub,#pflege .bub,#kiste .bub,#beet .bub,#malen .bub,#puppenhaus .bub,#markt .bub{font-size:26px;align-self:stretch;margin:0;margin-top:auto;background:#f6efff;border:3px solid #c6a4ef}
+#kochen,#pflege,#kiste,#beet,#malen,#puppenhaus,#markt,#abenteuer{position:fixed;z-index:6;inset:16px;display:flex}
+#kochen .wk,#pflege .wk,#kiste .wk,#beet .wk,#malen .wk,#puppenhaus .wk,#markt .wk,#abenteuer .wk{flex:1;display:flex;flex-direction:column;gap:12px;overflow-y:auto;padding:16px;border-radius:var(--r);background:#fff8ee;box-shadow:var(--shadow);position:relative}
+#kochen .aus,#pflege .aus,#kiste .aus,#beet .aus,#malen .aus,#puppenhaus .aus,#markt .aus,#abenteuer .aus{position:absolute;top:12px;right:12px;z-index:2}
+#kochen .bub,#pflege .bub,#kiste .bub,#beet .bub,#malen .bub,#puppenhaus .bub,#markt .bub,#abenteuer .bub{font-size:26px;align-self:stretch;margin:0;margin-top:auto;background:#f6efff;border:3px solid #c6a4ef}
 #koS,#pfS,#kiS,#beS{display:flex;flex-direction:column;flex:1;min-height:0;gap:12px}
-#kochen h2,#kiste h2,#beet h2,#malen h2,#puppenhaus h2,#markt h2{margin:0 0 8px;font-weight:600;font-size:36px;color:#3b2b52;text-align:center}
+#kochen h2,#kiste h2,#beet h2,#malen h2,#puppenhaus h2,#markt h2,#abenteuer h2{margin:0 0 8px;font-weight:600;font-size:36px;color:#3b2b52;text-align:center}
 #kochen .rezepte,#kochen .regalwaren,#kochen .gaeste,#kiste .regalwaren,#markt .regalwaren{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;padding:8px}
 #kochen .regalwaren,#kiste .regalwaren{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
 #kochen .rezept,#kochen .ware,#kochen .gast,#kiste .ware,#markt .ware{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;border:0;border-radius:22px;background:#fff;box-shadow:0 6px 18px rgba(70,50,140,.18);cursor:pointer;font-family:var(--font-ui);color:#3b2b52;min-height:60px}
@@ -260,6 +260,28 @@ section#eltern .muted{color:var(--muted)} section#eltern .ok{color:#2f7d4f;font-
 #kochen .zettel{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:16px;padding:12px 18px;margin:0 auto;border-radius:16px;background:#fffbe0;box-shadow:0 4px 12px rgba(70,50,140,.15);font-family:var(--font-read);font-size:30px;color:#3b2b52}
 #markt .ware{cursor:default}
 #markt .ware img,#markt .ware svg{width:140px;height:110px;object-fit:cover;border-radius:12px}
+
+/* Ticket 40: Sticker eines Tieres, Emils Postrunde */
+#abenteuer .sticker{display:flex;flex-direction:column;align-items:center;gap:14px;margin:8px auto;padding:24px 32px;max-width:720px;border-radius:28px;background:#fff;box-shadow:0 6px 18px rgba(70,50,140,.18);color:#3b2b52}
+#abenteuer .sticker .tier{font-size:140px;line-height:1}
+#abenteuer .sticker b{font-size:38px}
+#abenteuer .sticker p{font-size:40px;margin:0;text-align:center;line-height:1.35}
+#abenteuer .himmel{position:relative;height:70px;margin:0 8px;border-radius:35px;background:linear-gradient(90deg,#ffe9a8,#ffc58a 70%,#c9b6f0)}
+#abenteuer #abSonne{position:absolute;top:5px;left:0;font-size:52px;line-height:60px;transition:left 1s linear}
+#abenteuer .brief-jetzt{width:fit-content;margin:0 auto;text-align:center;font-size:38px;color:#3b2b52;padding:10px 28px;border-radius:22px;background:#fffbe0;box-shadow:0 6px 18px rgba(70,50,140,.14)}
+#abenteuer .brief-jetzt b{font-size:46px;color:#d9822b}
+#abenteuer .strasse{display:flex;flex-direction:column;gap:0;margin:0 auto;width:100%;max-width:1100px}
+#abenteuer .reihe{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;padding:0 8px}
+#abenteuer .fahrbahn{height:56px;margin:8px 0;background:repeating-linear-gradient(90deg,#9a96a8 0 40px,#fff 40px 70px) center/100% 6px no-repeat,#9a96a8;border-radius:12px}
+#abenteuer .haus{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:130px;padding:0 0 12px;border:0;border-radius:10px 10px 6px 6px;background:#fdf1dc;box-shadow:0 6px 14px rgba(70,50,140,.18);cursor:pointer;font-family:var(--font-ui);color:#3b2b52}
+#abenteuer .haus .dach{position:absolute;top:-26px;left:-4px;right:-4px;height:40px;background:#e0904a;clip-path:polygon(50% 0,100% 100%,0 100%)}
+#abenteuer .reihe:last-child .haus{background:#e8f1fb}
+#abenteuer .reihe:last-child .haus .dach{background:#8e5bd6}
+#abenteuer .haus .nr{font-size:40px;font-weight:600;background:#fff;border-radius:12px;padding:2px 12px}
+#abenteuer .haus.da{outline:4px solid #6bbf59}
+#abenteuer .haus .post{position:absolute;top:18px;font-size:34px}
+#abenteuer .reihe:first-child{margin-top:30px}
+#abenteuer .reihe:last-child{margin-top:34px}
 
 </style>
 <style>
@@ -456,6 +478,11 @@ section#eltern .muted{color:var(--muted)} section#eltern .ok{color:#2f7d4f;font-
 
 /* Groß oder klein? (Ticket 37) */
 .aufgabe .sentence span.gross{color:#2f6fb5;font-weight:700}
+.aufgabe table.tabelle{border-collapse:collapse;margin:8px auto;font-size:30px;background:#fff;border-radius:12px;overflow:hidden}
+.aufgabe table.tabelle th,.aufgabe table.tabelle td{border:2px solid #d8c8ef;padding:10px 18px;min-width:56px;text-align:center}
+.aufgabe table.tabelle th{background:#f3ecfa;font-family:var(--font-ui);font-weight:600;text-align:left}
+.aufgabe table.tabelle td.hl{background:#fff1a8}
+.aufgabe table.tabelle td.luecke .answerbox{min-width:64px;display:inline-block}
 
 </style>
 <body>
@@ -475,6 +502,7 @@ section#eltern .muted{color:var(--muted)} section#eltern .ok{color:#2f7d4f;font-
 <div id="kiste" hidden><div class="wk"><button class="aus" id="kiAus">Zurück</button><div id="kiS"></div><p class="bub wk-c" id="kiC" hidden></p></div></div>
 <div id="beet" hidden><div class="wk"><button class="aus" id="beAus">Zurück</button><div id="beS"></div><p class="bub wk-c" id="beC" hidden></p></div></div>
 <div id="markt" hidden><div class="wk"><button class="aus" id="mkAus">Zurück</button><div id="mkS"></div><p class="bub wk-c" id="mkC" hidden></p></div></div>
+<div id="abenteuer" hidden><div class="wk"><button class="aus" id="abAus">Zurück</button><div id="abS"></div><p class="bub wk-c" id="abC" hidden></p></div></div>
 <div id="malen" hidden><div class="wk"><button class="aus" id="maAus">Zurück</button><div id="maS"></div><p class="bub wk-c" id="maC" hidden></p></div></div>
 <div id="puppenhaus" hidden><div class="wk"><button class="aus" id="phAus">Zurück</button><div id="phS"></div><p class="bub wk-c" id="phC" hidden></p></div></div>
 <div id="buch" hidden><div class="wk"><button class="aus" id="buchAus" hidden>Aufhören</button><div id="buchS"></div><p class="bub wk-c" id="buchC" hidden></p></div></div>
@@ -503,6 +531,7 @@ section#eltern .muted{color:var(--muted)} section#eltern .ok{color:#2f7d4f;font-
 <script src="malen.js"></script>
 <script src="puppenhaus.js"></script>
 <script src="freunde.js"></script>
+<script src="abenteuer.js"></script>
 <script src="eltern.js"></script>
 <script src="main.js"></script>
 </body>
