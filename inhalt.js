@@ -682,6 +682,183 @@ schritt("m_zauberquadrat", "basteln", "katze", ["stimmt", "ergaenzen"], "Magic s
     "Bei 30 + 20 und 31 + 19 kommt beides Mal 50 heraus.", "Eine Zahl wird größer, die andere genauso viel kleiner."],
   merkheft: "Im Zauberquadrat ergibt jede Reihe, jede Spalte und jede Schräge dieselbe Zahl." });
 
+// ---------- Welt der Zahl Kap. 8 und 9 (Ticket 41): Längen, Skizzen, Zufall ----------
+// Körpermaße: kurze Texte (wie lang? warum verschieden?); o[0] ist richtig, warum[i] gehört zu o[i]
+const KOERPER = [
+  { text: ["Lotte misst ihr Beet mit dem Fuß.", "Sie setzt einen Fuß vor den anderen.", "Das Beet ist 7 Füße lang."],
+    fragen: [{ q: "Wie lang ist Lottes Beet?", o: ["7 Füße", "7 Hände", "7 Schritte", "7 Meter"], s: 2 }] },
+  { text: ["Azra misst den Tisch mit ihrer Handspanne.", "Sie zählt 8 Handspannen.", "Papa misst den gleichen Tisch.", "Er zählt nur 5 Handspannen."],
+    fragen: [{ q: "Wie viele Handspannen zählt Azra?", o: ["8", "5", "13", "3"], s: 1 },
+      { q: "Warum zählt Papa weniger?", o: ["Papas Hand ist größer.", "Der Tisch ist kürzer geworden.", "Papa hat sich verzählt.", "Azras Hand ist größer."], s: 3, warum: true,
+        w: ["", "Es ist der gleiche Tisch, er ist gleich lang geblieben.", "Papa hat richtig gezählt.", "Azras Hand ist kleiner, darum braucht sie mehr Handspannen."] }] },
+  { text: ["Mila misst ihren Tunnel mit Schritten.", "Sie zählt 6 Schritte.", "Otto misst den Tunnel auch.", "Otto braucht 9 Schritte."],
+    fragen: [{ q: "Wie viele Schritte braucht Otto?", o: ["9", "6", "15", "3"], s: 3 },
+      { q: "Wer macht die größeren Schritte?", o: ["Mila", "Otto", "beide gleich", "das weiß man nicht"], s: 3, warum: true,
+        w: ["", "Otto braucht mehr Schritte, also sind seine Schritte kleiner.", "Sie brauchen verschieden viele Schritte, also sind die Schritte nicht gleich.", "Wer weniger Schritte braucht, macht größere Schritte."] }] },
+  { text: ["Hilde misst ihr Regal mit dem Daumen.", "Es ist 20 Daumen breit.", "Dann misst sie mit der Handspanne.", "Jetzt sind es nur 4 Handspannen."],
+    fragen: [{ q: "Wie breit ist das Regal in Daumen?", o: ["20 Daumen", "4 Daumen", "24 Daumen", "20 Handspannen"], s: 1 },
+      { q: "Warum sind es mit der Handspanne weniger?", o: ["Eine Handspanne ist länger als ein Daumen.", "Das Regal ist geschrumpft.", "Ein Daumen ist länger als eine Handspanne.", "Hilde hat sich verzählt."], s: 3, warum: true,
+        w: ["", "Das Regal ist gleich breit geblieben.", "Ein Daumen ist viel kürzer als eine Handspanne.", "Hilde hat richtig gezählt."] }] }];
+KOERPER.push(
+  { text: ["Emil misst sein Paket mit dem Finger.", "Es ist 10 Finger breit.", "Fridolin misst das Paket mit seiner Flosse.", "Er zählt nur 2 Flossen."],
+    fragen: [{ q: "Wie viele Flossen zählt Fridolin?", o: ["2", "10", "12", "8"], s: 3 },
+      { q: "Was ist länger, ein Finger oder eine Flosse?", o: ["die Flosse", "der Finger", "beide gleich", "das weiß man nicht"], s: 3, warum: true,
+        w: ["", "Mit dem Finger braucht Emil mehr, also ist der Finger kürzer.", "Sie zählen verschieden viele, also sind beide nicht gleich lang.", "Wer weniger zählt, misst mit dem längeren Maß."] }] },
+  { text: ["Otto misst den Teppich mit Schritten.", "Er zählt 5 Schritte.", "Azra misst den Teppich auch mit Schritten.", "Sie zählt 7 Schritte."],
+    fragen: [{ q: "Wie viele Schritte zählt Otto?", o: ["5", "7", "12", "2"], s: 1 },
+      { q: "Warum zählt Azra mehr Schritte als Otto?", o: ["Azras Schritte sind kleiner.", "Azras Schritte sind größer.", "Der Teppich ist gewachsen.", "Otto hat sich verzählt."], s: 3, warum: true,
+        w: ["", "Mit größeren Schritten bräuchte sie weniger.", "Es ist der gleiche Teppich, er ist gleich lang geblieben.", "Otto hat richtig gezählt."] }] });
+const KOERPER_STIMMT = [["Mit der Handspanne bekommt jeder die gleiche Zahl.", false, "Jeder hat eine andere Hand, darum kommen verschiedene Zahlen heraus."],
+  ["Eine große Hand braucht weniger Handspannen.", true, "Doch: Eine große Hand schafft mit jeder Spanne mehr."],
+  ["Beim Messen sagt man die Zahl und das Maß.", true, "Doch: 6 allein reicht nicht, man sagt 6 Handspannen."],
+  ["Ein Schritt ist kürzer als ein Daumen.", false, "Ein Schritt ist viel länger als ein Daumen."],
+  ["Mit dem Lineal messen alle gleich.", true, "Doch: Ein Zentimeter ist für alle gleich lang."]];
+// Eine Frage zu einem Text: Antworten gemischt, warum mit gemischt
+function frageItem(rng, text, fr, extra){ const o = misch(rng, [0, 1, 2, 3]);
+  return { text, q: fr.q, o: o.map(i => fr.o[i]), a: o.indexOf(0), s: fr.s, ...(fr.w ? { warum: o.map(i => fr.w[i]) } : {}), ...extra, bitte: extra.bitte || fr.q }; }
+schritt("m_laenge_koerper", "basteln", "katze", ["textfrage", "stimmt"], "Compare lengths and measure with body measures",
+  "Lies, wie gemessen wird. Wie lang ist Lottes Beet?", {
+  gen(rng, s){
+    if(s === 2 && ja(rng)){ const [satz, a, f] = eins(rng, KOERPER_STIMMT); return { art: "stimmt", item: { s: satz, a, f, bitte: `Stimmt das? „${satz}“` } }; }
+    const k = eins(rng, KOERPER.filter(k => s === 0 || k.fragen.some(f => f.warum))), fr = eins(rng, k.fragen.filter(f => s === 0 ? !f.warum : f.warum));
+    return { art: "textfrage", item: frageItem(rng, k.text, fr, { lob: fr.warum ? "Du hast überlegt, warum die Zahlen verschieden sind." : "Du hast die Zahl und das Maß gelesen.",
+      ...(fr.warum ? { hilfe: ["Überleg: Ist die Hand, der Fuß oder der Schritt groß oder klein?", "Hier steht, was anders ist.", "Ich lese dir die Stelle vor. Was passt dazu?"] } : {}),
+      bitte: `Lies, wie gemessen wird. ${fr.q}` }) }; },
+  zeigen: ["Ich messe den Tisch mit meiner Pfote.", "Er ist 12 Pfoten lang.", "Du misst mit deiner Handspanne und zählst 6.",
+    "Deine Hand ist größer als meine Pfote, darum zählst du weniger.", "Zur Zahl sage ich immer das Maß dazu."],
+  merkheft: "Wer mit Hand oder Fuß misst, sagt das Maß dazu, und ein großes Maß braucht weniger." });
+
+// Zentimeter: Fridolins Fisch am Lineal (bis 15 cm); auf Stufe 2 liegt er nicht an der 0
+schritt("m_laenge_cm", "see", "fridolin", ["messen"], "Centimetres: measure with a ruler",
+  "Schau, was ich gefangen habe! Wie lang ist mein Fisch? Miss mit dem Lineal.", {
+  gen(rng, s){ const a = s === 2 ? zz(rng, 1, 4) : 0, b = s === 0 ? zz(rng, 3, 9) : s === 1 ? zz(rng, 8, 15) : zz(rng, a + 4, 15);
+    return { art: "messen", item: { a, b, bitte: "Schau, was ich gefangen habe! Wie lang ist mein Fisch? Miss mit dem Lineal." } }; },
+  zeigen: ["Beim Messen lege ich das Lineal an die 0 an.", "Der Fisch fängt bei 0 an und hört bei 9 auf.", "Also ist er 9 cm lang.",
+    "Liegt er nicht an der 0, zähle ich die Zentimeter vom Anfang bis zum Ende."],
+  merkheft: "Ich lege das Lineal an die 0 an und lese am Ende die Zentimeter ab." });
+
+// Meter und Bezugsgrößen: [Ding, Länge, Satz für ein falsches Kärtchen]
+const BEZUG = [["🐞 Marienkäfer", "etwa 1 cm", "Etwa 1 cm lang ist ein Marienkäfer."], ["✏️ Bleistift", "etwa 15 cm", "Etwa 15 cm lang ist ein Bleistift."],
+  ["📏 Lineal", "30 cm", "30 cm lang ist ein Lineal."], ["🪑 Stuhl mit Lehne", "etwa 1 m", "Etwa 1 m hoch ist ein Stuhl mit Lehne."],
+  ["🚪 Tür", "etwa 2 m", "Etwa 2 m hoch ist eine Tür."], ["🦒 Giraffe", "etwa 5 m", "Etwa 5 m groß ist eine Giraffe."], ["🚌 Bus", "etwa 12 m", "Etwa 12 m lang ist ein Bus."]];
+const SCHAETZ_STIMMT = [["Ein Bleistift ist etwa 15 m lang.", false, "Ein Bleistift ist etwa 15 cm lang, nicht 15 m."],
+  ["Eine Tür ist etwa 2 m hoch.", true, "Doch: Eine Tür ist etwa 2 m hoch."], ["Ein Bus ist etwa 12 cm lang.", false, "Ein Bus ist etwa 12 m lang, 12 cm ist so kurz wie ein Stift."],
+  ["1 m ist länger als 30 cm.", true, "Doch: 1 m sind 100 cm, das ist mehr als 30 cm."], ["Ein Marienkäfer ist etwa 1 m lang.", false, "Ein Marienkäfer ist nur etwa 1 cm lang."],
+  ["Eine Giraffe ist größer als eine Tür.", true, "Doch: Eine Giraffe ist etwa 5 m groß, eine Tür etwa 2 m hoch."]];
+schritt("m_laenge_m", "huegel", "mila", ["paare", "stimmt"], "Metres, everyday lengths to compare, estimating lengths",
+  "Ich will meinen Tunnel ausmessen. Weißt du, wie lang diese Dinge ungefähr sind?", {
+  gen(rng, s){
+    if(s === 2 && ja(rng)){ const [satz, a, f] = eins(rng, SCHAETZ_STIMMT); return { art: "stimmt", item: { s: satz, a, f, bitte: `Stimmt das? „${satz}“` } }; }
+    const P = s === 0 ? ziehe(rng, [BEZUG[0], BEZUG[2], BEZUG[4], BEZUG[6]], 3) : ziehe(rng, BEZUG, 3 + s);
+    return { art: "paare", item: { k: "Ding und Länge", l: P.map(p => p[0]), r: P.map(p => p[1]), rn: P.map(p => p[2]),
+      h1: "Stell dir das Ding vor: Ist es kürzer als dein Lineal oder viel länger?", bitte: "Ich will meinen Tunnel ausmessen. Weißt du, wie lang diese Dinge ungefähr sind?" } }; },
+  zeigen: ["Lange Dinge messe ich in Metern.", "Eine Tür ist etwa 2 m hoch.", "Kurze Dinge messe ich in Zentimetern.", "Mein Lineal ist 30 cm lang.",
+    "Beim Schätzen vergleiche ich mit Dingen, die ich kenne."],
+  merkheft: "Zum Schätzen merke ich mir: Lineal 30 cm, Tür etwa 2 m." });
+
+// Meter und Zentimeter: 1 m = 100 cm, 1 m 35 cm = 135 cm, Längen vergleichen
+schritt("m_laenge_mcm", "garten", "lotte", ["tabelle", "textfrage", "stimmt"], "Metres and centimetres, mixed notation (2 m 15 cm)",
+  "Ich schneide Seile für meinen Balkon. Wie viele Zentimeter sind das?", {
+  gen(rng, s){
+    const art = s === 0 ? "tabelle" : s === 1 ? (ja(rng, .3) ? "tabelle" : "textfrage") : eins(rng, ["textfrage", "stimmt", "stimmt"]);
+    if(art === "tabelle"){ const n = 5, lc = zz(rng, 2, n), oben = ja(rng, s === 0 ? 0 : .4);
+      return { art, item: { zeilen: [["Meter", ...bis(1, n)], ["Zentimeter", ...bis(1, n).map(m => 100 * m)]], luecke: [oben ? 0 : 1, lc], res: oben ? lc : 100 * lc,
+        lob: "Du weißt: 1 m sind 100 cm.", bitte: oben ? `Ein Seil ist ${100 * lc} cm lang. Wie viele Meter sind das?` : `Ein Seil ist ${lc} m lang. Wie viele Zentimeter sind das?` } }; }
+    const m = zz(rng, 1, s === 1 ? 2 : 3), cm = ja(rng, .3) ? zz(rng, 1, 9) : zz(rng, 10, 99);
+    if(art === "textfrage"){ const echt = 100 * m + cm, w = new Map([[100 * m + 10 * cm, `Bei ${cm} cm kommen nur ${cm} Zentimeter dazu, nicht ${10 * cm}.`],
+        [10 * m + cm, `${m} m sind ${100 * m} cm, nicht ${10 * m} cm.`], [cm, "Da fehlen die Meter."], [100 * m, "Da fehlen die Zentimeter."], [echt + 100, "Das ist 1 m zu viel."]]);
+      const falsch = [...w.keys()].filter(v => v !== echt && (v !== 100 * m + 10 * cm || cm < 10)).slice(0, 3), o = misch(rng, [0, 1, 2, 3]), oo = [echt, ...falsch], ww = ["", ...falsch.map(v => w.get(v))];
+      return { art, item: { text: ["Lotte schneidet ein Seil für ihren Balkon.", `Das Seil ist ${m} m ${cm} cm lang.`], q: "Wie viele Zentimeter sind das?", s: 1,
+        o: o.map(i => `${oo[i]} cm`), a: o.indexOf(0), warum: o.map(i => ww[i]),
+        hilfe: ["Denk dran: 1 m sind 100 cm.", "Hier steht, wie lang das Seil ist.", `${m} m sind ${100 * m} cm, dazu kommen noch ${cm} cm.`],
+        lob: "Du hast Meter und Zentimeter zusammengezählt.", bitte: `Mein Seil ist ${m} m ${cm} cm lang. Wie viele Zentimeter sind das?` } }; }
+    // bei 1 m 5 cm gern gegen 150 cm (die typische Verwechslung), sonst 10 bis 40 cm daneben
+    const echt = 100 * m + cm, x = cm < 10 && ja(rng) ? 100 * m + 10 * cm : echt + (ja(rng) ? 1 : -1) * 10 * zz(rng, 1, 4);
+    const laenger = ja(rng), a = laenger ? echt > x : echt < x;
+    return { art: "stimmt", item: { s: `${m} m ${cm} cm ist ${laenger ? "länger" : "kürzer"} als ${x} cm.`, a,
+      f: `${a ? "Doch: " : ""}${m} m ${cm} cm sind ${echt} cm, das ist ${echt > x ? "mehr" : "weniger"} als ${x} cm.`, bitte: `Stimmt das? „${m} m ${cm} cm ist ${laenger ? "länger" : "kürzer"} als ${x} cm.“` } }; },
+  zeigen: ["1 m sind 100 cm.", "Mein Seil ist 1 m 35 cm lang.", "Das sind 100 cm und 35 cm.", "Zusammen sind es 135 cm."],
+  merkheft: "1 m = 100 cm, also sind 1 m 35 cm genau 135 cm." });
+
+// Skizze als Hilfe: Zaunpfähle, hin und zurück, ein quadratisches Beet; auf Stufe 0 steht die Skizze dabei
+function skizzeItem(rng, s){
+  const art = s < 2 ? "zaun" : eins(rng, ["zaun", "weg", "beet"]);
+  if(art === "zaun"){ const d = s === 0 ? 2 : eins(rng, [2, 3]), n = zz(rng, 2, s === 0 ? 4 : 5), L = d * n, r = n + 1;
+    const text = [`Lotte baut einen Zaun, er ist ${L} m lang.`, `Alle ${d} m steht ein Pfahl, auch am Anfang und am Ende.`, ...(s === 0 ? [`Skizze: ${"🪵" + "——🪵".repeat(n)}`] : [])];
+    const falsch = [...new Set([n, L, r + 1, n - 1].filter(v => v > 0 && v !== r))].slice(0, 3);
+    const w = { [n]: "Am Ende steht auch noch ein Pfahl.", [L]: `${L} ist die Länge in Metern, nicht die Zahl der Pfähle.`, [r + 1]: "Das ist ein Pfahl zu viel.", [n - 1]: "Da fehlen noch Pfähle." };
+    return { text, q: "Wie viele Pfähle braucht Lotte?", o: [String(r), ...falsch.map(String)], w: ["", ...falsch.map(v => w[v])], s: 1,
+      hilfe: s === 0 ? ["Schau dir die Skizze an.", "Hier steht, wo die Pfähle stehen.", "Zähl jeden Pfahl in der Skizze."]
+        : ["Mal dir eine Skizze: einen Strich für den Zaun und die Pfähle darauf.", "Hier steht, wo die Pfähle stehen.", "Am Anfang und am Ende steht auch ein Pfahl, zähl alle."] }; }
+  if(art === "weg"){ const d = eins(rng, [15, 20, 25, 30, 35, 40, 45]);
+    return { text: [`Vom Haus bis zum See sind es ${d} m.`, "Azra geht hin und dann wieder zurück."], q: "Wie weit geht Azra?", s: 1,
+      o: [`${2 * d} m`, `${d} m`, `${d + 10} m`, `${2 * d + 10} m`], w: ["", "Das ist nur der Weg hin.", "Zurück ist der Weg genauso lang wie hin.", "Das ist zu weit."],
+      hilfe: ["Mal dir eine Skizze: einen Pfeil hin und einen Pfeil zurück.", "Hier steht, dass sie zweimal geht.", "Der Weg zurück ist genauso lang wie hin."] }; }
+  const a = zz(rng, 2, 5);
+  return { text: ["Lottes Beet ist ein Quadrat.", `Jede Seite ist ${a} m lang.`, "Sie spannt eine Schnur ringsherum."], q: "Wie lang ist die Schnur?", s: 2,
+    o: [`${4 * a} m`, `${a} m`, `${2 * a} m`, `${3 * a} m`], w: ["", "Das ist nur eine Seite.", "Das sind nur zwei Seiten.", "Da fehlt noch eine Seite."],
+    hilfe: ["Mal dir das Beet auf: Wie viele Seiten hat ein Quadrat?", "Hier steht, wo die Schnur ist.", "Ein Quadrat hat vier gleich lange Seiten, zähl alle zusammen."] };
+}
+schritt("m_sach_skizze", "basteln", "katze", ["textfrage"], "Word problems: a sketch as a help",
+  "Lotte baut einen Zaun. Mach dir eine Skizze: Wie viele Pfähle braucht sie?", {
+  gen(rng, s){ const x = skizzeItem(rng, s), o = misch(rng, [0, 1, 2, 3]);
+    return { art: "textfrage", item: { text: x.text, q: x.q, o: o.map(i => x.o[i]), a: o.indexOf(0), s: x.s, warum: o.map(i => x.w[i]), hilfe: x.hilfe,
+      lob: "Mit der Skizze hast du genau gezählt.", bitte: `${x.text[0]} ${x.q}` } }; },
+  zeigen: ["Lotte baut einen Zaun, er ist 6 m lang.", "Alle 2 m kommt ein Pfahl.", "Ich mache eine Skizze: einen Strich und Pfähle darauf.",
+    "Am Anfang und am Ende steht auch ein Pfahl.", "Ich zähle in der Skizze: 4 Pfähle."],
+  merkheft: "Bei schwierigen Aufgaben mache ich eine Skizze und zähle darin nach." });
+
+// Zufall: sicher, möglich, unmöglich (Hildes Losbeutel); [Bild, Karte, Korb, Tipp]
+const ZUFALL_KOERBE = { sicher: ["✅ sicher", "In diesen Korb kommt, was ganz bestimmt passiert."], moeglich: ["🤞 möglich", "In diesen Korb kommt, was passieren kann, aber nicht muss."],
+  unmoeglich: ["🚫 unmöglich", "In diesen Korb kommt, was nie passieren kann."] };
+const ZUFALL = { sicher: [["🔴", "Nur rote Kugeln: Ich ziehe Rot.", "Im Beutel ist ja nichts anderes als Rot."], ["🎲", "Ich würfle eine Zahl von 1 bis 6.", "Auf dem Würfel stehen nur die Zahlen 1 bis 6."],
+    ["🔵", "Nur blaue Kugeln: Ich ziehe Blau.", "Im Beutel ist ja nichts anderes als Blau."]],
+  moeglich: [["🎲", "Ich würfle eine 6.", "Die 6 kann kommen, sie muss aber nicht."], ["🔴", "Rote und blaue Kugeln: Ich ziehe Blau.", "Blau ist drin, aber Rot auch."],
+    ["🪙", "Die Münze zeigt Zahl.", "Die Münze kann Zahl oder Kopf zeigen."], ["🎲", "Ich würfle eine gerade Zahl.", "2, 4 und 6 sind gerade, 1, 3 und 5 nicht."]],
+  unmoeglich: [["🎲", "Ich würfle eine 7.", "Auf dem Würfel gibt es keine 7."], ["🔴", "Nur rote Kugeln: Ich ziehe Grün.", "Im Beutel ist keine grüne Kugel."],
+    ["🎲", "Ich würfle eine 0.", "Auf dem Würfel gibt es keine 0."]] };
+schritt("m_zufall_begriffe", "laden", "hilde", ["muell"], "Chance: certain, possible, impossible",
+  "Ich mache einen Losbeutel. Ist das sicher, möglich oder unmöglich?", {
+  gen(rng, s){ const K = ["sicher", "moeglich", "unmoeglich"], t = K.map(k => [...eins(rng, ZUFALL[k]), k]);
+    while(t.length < 3 + s){ const k = eins(rng, K), x = eins(rng, ZUFALL[k]); if(!t.some(d => d[1] === x[1])) t.push([...x, k]); }
+    return { art: "muell", item: { t: misch(rng, t).map(([e, n, tipp, k]) => [e, n, k, tipp]), koerbe: ZUFALL_KOERBE,
+      h1: "Frag dich bei jeder Karte: Passiert das immer, vielleicht oder nie?", lob: "Du hast bei jeder Karte überlegt, wie sicher sie ist.",
+      dank: "Danke! Jetzt weiß ich, was in meinem Losbeutel passieren kann.", bitte: "Ich mache einen Losbeutel. Ist das sicher, möglich oder unmöglich?" } }; },
+  zeigen: ["Im Beutel sind nur rote Kugeln.", "Ich ziehe ganz sicher eine rote.", "Eine grüne Kugel zu ziehen ist unmöglich.", "Eine 6 zu würfeln ist möglich, aber nicht sicher."],
+  merkheft: "Sicher passiert immer, möglich kann passieren, unmöglich passiert nie." });
+
+// Gewinnchancen: zwei Beutel mit gleich vielen Kugeln, oder Ottos Glücksrad
+const CHANCEN_STIMMT = [["Mit einem Würfel ist eine 6 sicher.", false, "Eine 6 ist möglich, aber nicht sicher."],
+  ["Sind im Beutel 9 rote und 1 blaue Kugel, ziehe ich wahrscheinlich Rot.", true, "Doch: Es sind viel mehr rote als blaue Kugeln drin."],
+  ["Sind im Beutel 5 rote und 5 blaue Kugeln, ist Rot wahrscheinlicher.", false, "Bei 5 roten und 5 blauen ist beides gleich wahrscheinlich."],
+  ["Ein großes Feld am Glücksrad gewinnt eher als ein kleines.", true, "Doch: Auf einem großen Feld bleibt der Zeiger öfter stehen."]];
+function chancenItem(rng, s){
+  if(s === 2 && ja(rng)){ const g = zz(rng, 4, 5), n = zz(rng, 1, 2), F = misch(rng, [["gelb", "Gelb"], ["grün", "Grün"], ["rot", "Rot"]]);
+    const f = [[g, ...F[0]], [n, ...F[1]], [8 - g - n, ...F[2]]], feld = ([k, farbe]) => `${k} ${k === 1 ? "Feld ist" : "Felder sind"} ${farbe}`, nur = ([k, , Farbe]) => `${Farbe} hat nur ${k} ${k === 1 ? "Feld" : "Felder"}.`;
+    return { text: ["Otto hat ein Glücksrad mit 8 Feldern.", `${misch(rng, f).map(feld).join(", ").replace(/, ([^,]*)$/, " und $1")}.`, "Er dreht einmal."], q: "Welche Farbe gewinnt am ehesten?", s: 1,
+      o: [f[0][2], f[1][2], f[2][2], "alle gleich"], w: ["", nur(f[1]), nur(f[2]), "Die Farben haben verschieden viele Felder."],
+      hilfe: ["Zähl, wie viele Felder jede Farbe hat.", "Hier steht, wie viele Felder jede Farbe hat.", "Die Farbe mit den meisten Feldern gewinnt am ehesten."] }; }
+  const n = 10, viel = zz(rng, 6, 8), wenig = zz(rng, 2, 4), A = ja(rng), rot = s === 0 || ja(rng);
+  // die gefragte Farbe: in einem Beutel viel, im anderen wenig
+  const [rA, rB] = A ? [viel, wenig] : [wenig, viel], beutel = rot ? [[rA, n - rA], [rB, n - rB]] : [[n - rA, rA], [n - rB, rB]];
+  const farbe = rot ? "rote" : "blaue", i = rot ? 0 : 1, gross = A ? "A" : "B", klein = A ? "B" : "A";
+  return { text: [`Im Beutel A sind ${beutel[0][0]} rote und ${beutel[0][1]} blaue Kugeln.`, `Im Beutel B sind ${beutel[1][0]} rote und ${beutel[1][1]} blaue Kugeln.`,
+      "Otto zieht eine Kugel, ohne hinzuschauen."], q: `Aus welchem Beutel zieht Otto eher eine ${farbe} Kugel?`, s: A ? 0 : 1,
+    o: [`aus Beutel ${gross}`, `aus Beutel ${klein}`, "bei beiden gleich", "aus keinem"],
+    w: ["", `Im Beutel ${klein} sind nur ${A ? beutel[1][i] : beutel[0][i]} ${farbe} Kugeln.`, `In A sind ${beutel[0][i]} ${farbe}, in B ${beutel[1][i]}, das ist nicht gleich.`, `In beiden Beuteln sind ${farbe} Kugeln.`],
+    hilfe: [`Vergleiche: In welchem Beutel sind mehr ${farbe} Kugeln?`, `Hier sind mehr ${farbe} Kugeln.`, `Ich lese dir vor, in welchem Beutel mehr ${farbe} Kugeln sind.`] };
+}
+schritt("m_zufall_chancen", "cafe", "otto", ["textfrage", "stimmt"], "Likely and unlikely: compare chances",
+  "Ich habe zwei Losbeutel. Aus welchem ziehe ich eher eine rote Kugel?", {
+  gen(rng, s){
+    if(s > 0 && ja(rng, .25)){ const [satz, a, f] = eins(rng, CHANCEN_STIMMT); return { art: "stimmt", item: { s: satz, a, f, bitte: `Stimmt das? „${satz}“` } }; }
+    const x = chancenItem(rng, s), o = misch(rng, [0, 1, 2, 3]);
+    return { art: "textfrage", item: { text: x.text, q: x.q, o: o.map(i => x.o[i]), a: o.indexOf(0), s: x.s, warum: o.map(i => x.w[i]), hilfe: x.hilfe,
+      lob: "Du hast die Chancen verglichen.", bitte: x.q } }; },
+  zeigen: ["In Beutel A sind 8 rote und 2 blaue Kugeln.", "In Beutel B sind 5 rote und 5 blaue Kugeln.", "In A sind mehr rote Kugeln.",
+    "Darum ziehe ich aus A wahrscheinlich eher eine rote."],
+  merkheft: "Wo mehr von einer Farbe drin ist, ziehe ich diese Farbe wahrscheinlicher." });
+
 // ---------- Geld (Ticket 33, Welt der Zahl Kap. 6): Münzen und Scheine bis 50 €, gemischte Schreibweise wie in der Schule ----------
 const betrag = c => c < 100 ? c + " ct" : c % 100 ? `${Math.floor(c / 100)} € ${c % 100} ct` : c / 100 + " €";
 const GELD = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000];
@@ -1583,6 +1760,198 @@ schritt("d_va_tempo", "tagebuch", "katze", [], "Write joined handwriting fluentl
   offline: true,
   zeigen: ["Vor dem Schreiben lockere ich meine Hand.", "Ich halte den Stift locker, nicht zu fest.", "Ich schreibe die Wörter in einem Zug.", "Flüssig heißt nicht hastig, lesen muss man es noch."],
   merkheft: "Ich schreibe locker und flüssig, aber immer noch gut lesbar." });
+
+// ---------- Karibu Kap. 7 (Ticket 41): Interview, Steckbrief, überarbeiten, unbekannte Wörter, Adjektive, ie verlängern, ä ableiten ----------
+schritt("d_erzaehlen", "post", "emil", [], "Tell and inform, ask and answer questions",
+  "Frag jemanden zu Hause nach seinem Lieblingstier und erzähl dann, was du erfahren hast.", {
+  offline: true,
+  zeigen: ["Bei einem Interview stelle ich Fragen.", "Gute Fragen fangen mit wer, was, wo oder warum an.", "Ich höre genau zu, wenn jemand antwortet.",
+    "Danach erzähle ich anderen, was ich erfahren habe."],
+  merkheft: "Ich stelle Fragen mit W-Wörtern und höre genau zu." });
+
+// Steckbrief: Stichwörter zu Aussehen, Nahrung, Lebensraum; Tipp unter der Karte nennt den Korb nicht
+const STECK_KOERBE = { aussehen: ["👀 Aussehen", "In diesen Korb kommt, wie das Tier aussieht."], nahrung: ["🍽️ Nahrung", "In diesen Korb kommt, was das Tier frisst."],
+  lebensraum: ["🏡 Lebensraum", "In diesen Korb kommt, wo das Tier lebt."] };
+const STECK_TIPP = { aussehen: "Das siehst du, wenn du das Tier anschaust.", nahrung: "Davon wird das Tier satt.", lebensraum: "Dort ist das Tier zu Hause." };
+const STECKBRIEF = [
+  { e: "🦔", akk: "den Igel", aussehen: ["hat Stacheln", "hat eine spitze Nase"], nahrung: ["frisst Käfer", "frisst Regenwürmer"], lebensraum: ["lebt in Hecken", "lebt im Garten"] },
+  { e: "🐿️", akk: "das Eichhörnchen", aussehen: ["hat einen buschigen Schwanz", "hat Pinselohren"], nahrung: ["frisst Nüsse", "frisst Samen aus Zapfen"], lebensraum: ["lebt im Wald", "wohnt in einem Kobel"] },
+  { e: "🦆", akk: "die Ente", aussehen: ["hat Schwimmhäute", "hat einen breiten Schnabel"], nahrung: ["frisst Wasserpflanzen", "frisst kleine Schnecken"], lebensraum: ["lebt am See", "lebt am Teich"] },
+  { e: "🦊", akk: "den Fuchs", aussehen: ["hat rotes Fell", "hat spitze Ohren"], nahrung: ["frisst Mäuse", "frisst Beeren"], lebensraum: ["lebt am Waldrand", "wohnt in einem Bau"] },
+  { e: "🐝", akk: "die Biene", aussehen: ["hat gelbe und schwarze Streifen", "hat vier Flügel"], nahrung: ["trinkt Nektar", "frisst Blütenstaub"], lebensraum: ["lebt im Bienenstock", "lebt auf Blumenwiesen"] }];
+schritt("d_steckbrief", "see", "fridolin", ["muell"], "A profile of an animal (Steckbrief)",
+  "Ich schreibe einen Steckbrief über den Igel. Hilfst du mir, die Stichwörter zu ordnen?", {
+  // ab Stufe 1 nur das Stichwort („Stacheln“ statt „hat Stacheln“), sonst sortiert schon das erste Wort
+  gen(rng, s){ const T = eins(rng, STECKBRIEF), K = ["aussehen", "nahrung", "lebensraum"], stich = w => s > 0 ? w.replace(/^\S+ /, "") : w;
+    const t = K.map(k => [T.e, stich(eins(rng, T[k])), k, STECK_TIPP[k]]);
+    while(t.length < 3 + s){ const k = eins(rng, K), w = stich(eins(rng, T[k])); if(!t.some(d => d[1] === w)) t.push([T.e, w, k, STECK_TIPP[k]]); }
+    const bitte = `Ich schreibe einen Steckbrief über ${T.akk}. Hilfst du mir, die Stichwörter zu ordnen?`;
+    return { art: "muell", item: { t: misch(rng, t), koerbe: STECK_KOERBE, h1: "Frag dich bei jeder Karte: Wie sieht es aus, was frisst es, wo lebt es?",
+      lob: "Du hast die Stichwörter geordnet wie in einem echten Steckbrief.", dank: "Danke! Jetzt kann ich den Steckbrief schreiben.", bitte } }; },
+  zeigen: ["Ein Steckbrief erzählt kurz über ein Tier.", "Zuerst sammle ich Stichwörter.", "Ich ordne sie nach Aussehen, Nahrung und Lebensraum.",
+    "Der Igel hat Stacheln, frisst Käfer und lebt in Hecken."],
+  merkheft: "Im Steckbrief ordne ich Stichwörter nach Aussehen, Nahrung und Lebensraum." });
+
+// Überarbeiten: Großschreibung (Satzanfang und Nomen) und Lernwörter mit der Vorlage vergleichen
+const RS_GROSS = [[["der", "igel", "hat", "stacheln."], [0, 1, 3], { 1: "der Igel", 3: "die Stacheln" }],
+  [["die", "ente", "lebt", "am", "see."], [0, 1, 4], { 1: "die Ente", 4: "der See" }],
+  [["das", "eichhörnchen", "frisst", "gern", "nüsse."], [0, 1, 4], { 1: "das Eichhörnchen", 4: "die Nüsse" }],
+  [["der", "fuchs", "hat", "rotes", "fell."], [0, 1, 4], { 1: "der Fuchs", 4: "das Fell" }],
+  [["im", "wald", "wohnt", "ein", "fuchs."], [0, 1, 4], { 1: "der Wald", 4: "der Fuchs" }],
+  [["die", "biene", "sammelt", "nektar", "für", "den", "honig."], [0, 1, 3, 6], { 1: "die Biene", 3: "der Nektar", 6: "der Honig" }],
+  [["im", "winter", "schläft", "der", "igel", "unter", "dem", "laub."], [0, 1, 4, 7], { 1: "der Winter", 4: "der Igel", 7: "das Laub" }]];
+const RS_SATZ = { ".": ["Der Igel hat Stacheln", "Die Ente lebt am See", "Der Fuchs frisst Mäuse"], "?": ["Was frisst der Igel", "Wo wohnt das Eichhörnchen", "Wie sieht ein Fuchs aus"],
+  "!": ["Pass auf, der Igel sticht", "Schau mal, ein Eichhörnchen", "Vorsicht, Bienen"] };
+const RS_FEHLER = [["Die Ente schwimmt im Wasser.", "Die Ente schwimt im Wasser."], ["Der Fuchs hat einen langen Schwanz.", "Der Fuchs hat einen langen Schwans."],
+  ["Die Biene fliegt zur Blume.", "Die Biene fligt zur Blume."], ["Das Eichhörnchen frisst Nüsse.", "Das Eichhörnchen frist Nüsse."],
+  ["Der Igel sucht Futter.", "Der Igel sucht Futer."], ["Im Wald wohnen viele Tiere.", "Im Wald wohnen fiele Tiere."]];
+schritt("d_ueberarbeiten_rs", "tagebuch", "katze", ["gross", "fehler", "weiterschwingen"], "Revise a text for spelling and publish it",
+  "Mein Steckbrief ist ganz klein geschrieben. Tipp die Wörter an, die groß werden.", {
+  gen(rng, s){
+    const r = rng();
+    if(s > 0 && r < .3){ const z = eins(rng, [".", "?", "!"]), satz = eins(rng, RS_SATZ[z]), [h2, h3a, h3b] = SATZ_HILFE[z];
+      return { art: "weiterschwingen", item: { pic: "📝", pre: satz, ans: z, tiles: [".", "?", "!"],
+        hilfe: ["Lies den Satz laut: Erzählst du, fragst du oder rufst du?", [satz.split(/[ ,]/)[0] + " …", h2], [h3a, h3b, satz + z]],
+        bitte: "In meinem Steckbrief fehlt am Ende ein Zeichen. Punkt, Fragezeichen oder Ausrufezeichen?" } }; }
+    if(s > 0 && r < (s === 1 ? .6 : .75)){ const [v, c] = eins(rng, RS_FEHLER);
+      return { art: "fehler", item: { v, c, bitte: "Emil hat meinen Steckbrief abgeschrieben. Ein Wort ist anders als in der Vorlage. Findest du es?" } }; }
+    const [w, g, p] = eins(rng, RS_GROSS.filter(x => s === 0 ? x[0].length <= 5 : true));
+    return { art: "gross", item: { w, g, p, bitte: "Mein Steckbrief ist ganz klein geschrieben. Tipp die Wörter an, die groß werden." } }; },
+  zeigen: ["Bevor ich meinen Text aufhänge, lese ich ihn noch einmal.", "Ich prüfe, ob Satzanfang und Nomen groß sind.", "Lernwörter vergleiche ich mit der Wörterliste.",
+    "Am Ende vom Satz steht ein Punkt."],
+  merkheft: "Ich überarbeite meinen Text: groß oder klein, Lernwörter und Satzzeichen." });
+
+// Unbekannte Wörter: der Text erklärt das Wort; dazu eine Frage nach einer Information (Stufe 0)
+const UNBEKANNT = [
+  { text: ["Der Igel hat viele Stacheln.", "Die Stacheln sind spitz wie kleine Nadeln.", "Kommt ein Fuchs, rollt sich der Igel zu einer Kugel."],
+    wort: { q: "Was sind Stacheln?", o: ["spitze Nadeln am Igel", "weiche Federn", "kleine Füße", "lange Ohren"], s: 1 },
+    info: { q: "Was macht der Igel, wenn ein Fuchs kommt?", o: ["Er rollt sich zu einer Kugel.", "Er klettert auf einen Baum.", "Er schwimmt weg.", "Er bellt laut."], s: 2 } },
+  { text: ["Das Eichhörnchen baut sich einen Kobel.", "Ein Kobel ist ein rundes Nest aus Zweigen.", "Darin schläft es und bekommt seine Jungen."],
+    wort: { q: "Was ist ein Kobel?", o: ["ein rundes Nest aus Zweigen", "ein Baum im Wald", "eine große Nuss", "ein anderes Tier"], s: 1 },
+    info: { q: "Was macht das Eichhörnchen im Kobel?", o: ["Es schläft darin.", "Es kocht darin.", "Es schwimmt darin.", "Es malt darin."], s: 2 } },
+  { text: ["Die Ente hat Schwimmhäute zwischen den Zehen.", "Damit paddelt sie, sie schiebt das Wasser mit den Füßen nach hinten.", "So schwimmt sie schnell über den See."],
+    wort: { q: "Was bedeutet paddeln?", o: ["das Wasser mit den Füßen nach hinten schieben", "laut schnattern", "in die Luft fliegen", "tief schlafen"], s: 1 },
+    info: { q: "Wo hat die Ente Schwimmhäute?", o: ["zwischen den Zehen", "am Schnabel", "an den Flügeln", "am Schwanz"], s: 0 } },
+  { text: ["Im Herbst fliegen viele Vögel in den Süden.", "Dort ist es im Winter warm.", "Man nennt diese Vögel Zugvögel."],
+    wort: { q: "Was sind Zugvögel?", o: ["Vögel, die im Herbst in den Süden fliegen", "Vögel, die mit dem Zug fahren", "Vögel, die nie fliegen", "Vögel aus Holz"], s: 0 },
+    info: { q: "Warum fliegen sie in den Süden?", o: ["Dort ist es im Winter warm.", "Dort fahren viele Züge.", "Dort ist es im Winter kalt.", "Dort schneit es viel."], s: 1 } },
+  { text: ["Die Biene fliegt von Blüte zu Blüte.", "Sie saugt den Nektar, einen süßen Saft, aus den Blüten.", "Aus dem Nektar macht sie Honig."],
+    wort: { q: "Was ist Nektar?", o: ["ein süßer Saft in Blüten", "ein Teil vom Bienenstock", "eine Farbe", "ein kleines Insekt"], s: 1 },
+    info: { q: "Was macht die Biene aus dem Nektar?", o: ["Honig", "Wachs", "Milch", "Zucker"], s: 2 } },
+  { text: ["Der Maulwurf lebt unter der Erde.", "Mit seinen Grabschaufeln gräbt er lange Gänge.", "Grabschaufeln nennt man seine breiten Vorderpfoten."],
+    wort: { q: "Was sind Grabschaufeln?", o: ["die breiten Vorderpfoten", "Schaufeln aus dem Garten", "lange Gänge", "kleine Hügel"], s: 2 },
+    info: { q: "Wo lebt der Maulwurf?", o: ["unter der Erde", "auf einem Baum", "im Wasser", "auf einer Wolke"], s: 0 } }];
+// Stufe 2: die Erklärung steht vor dem Wort, oder ein bekanntes Wort bedeutet hier etwas anderes
+const UNBEKANNT_SCHWER = [
+  { text: ["Die Kuh frisst Gras.", "Später holt sie das Gras wieder aus dem Magen und kaut es noch einmal.", "Das nennt man wiederkäuen."],
+    wort: { q: "Was bedeutet wiederkäuen?", o: ["Gras noch einmal kauen", "Gras sammeln", "laut muhen", "schnell laufen"], s: 1 },
+    info: { q: "Was frisst die Kuh?", o: ["Gras", "Fleisch", "Nüsse", "Honig"], s: 0 } },
+  { text: ["Manche Tiere schlafen den ganzen Winter.", "Sie wachen erst im Frühling wieder auf.", "Der Igel hält so einen Winterschlaf."],
+    wort: { q: "Was ist ein Winterschlaf?", o: ["den ganzen Winter schlafen", "im Winter spielen", "im Schnee baden", "ein Bett aus Schnee"], s: 0 },
+    info: { q: "Wann wacht der Igel auf?", o: ["im Frühling", "im Herbst", "jeden Abend", "im Winter"], s: 1 } },
+  { text: ["Die Raupe frisst viele Blätter.", "Dann spinnt sie sich ein und schläft.", "In dieser Hülle, der Puppe, wird sie zum Schmetterling."],
+    wort: { q: "Was ist hier eine Puppe?", o: ["die Hülle der Raupe", "ein Spielzeug", "ein Blatt", "ein Schmetterling"], s: 2 },
+    info: { q: "Was frisst die Raupe?", o: ["Blätter", "Käfer", "Honig", "Steine"], s: 0 } }];
+schritt("d_lesen_unbekannt", "regal", "katze", ["textfrage"], "Work out unknown words, find information in a text",
+  "In meinem Tierbuch steht ein Wort, das ich nicht kenne. Lies den Text. Was ist ein Kobel?", {
+  gen(rng, s){ const u = eins(rng, s === 2 && ja(rng, .6) ? UNBEKANNT_SCHWER : UNBEKANNT), wort = s === 1 || (s === 2 && ja(rng, .7)), fr = wort ? u.wort : u.info, o = misch(rng, [0, 1, 2, 3]);
+    return { art: "textfrage", item: { text: u.text, q: fr.q, o: o.map(i => fr.o[i]), a: o.indexOf(0), s: fr.s,
+      ...(wort ? { hilfe: ["Lies den Text um das Wort herum, er erklärt es.", "Hier steht, was das Wort bedeutet.", "Ich lese dir die Stelle vor. Tipp dann die Antwort."] } : {}),
+      lob: wort ? "Du hast das Wort mit dem Text geklärt." : "Du hast die Stelle im Text gefunden.", bitte: `Lies den Text aus meinem Tierbuch. ${fr.q}` } }; },
+  zeigen: ["Kenne ich ein Wort nicht, lese ich trotzdem weiter.", "Oft erklärt ein Satz davor oder danach das Wort.", "Im Text steht: Ein Kobel ist ein rundes Nest aus Zweigen.",
+    "Hilft der Text nicht, frage ich jemanden oder schaue nach."],
+  merkheft: "Unbekannte Wörter kläre ich mit dem Text oder ich frage nach." });
+
+// Adjektive: Gegenteile als Paare, Wie-Wörter in den richtigen Korb
+const GEGENTEIL = [["groß", "klein"], ["heiß", "kalt"], ["schnell", "langsam"], ["hell", "dunkel"], ["laut", "leise"], ["alt", "jung"], ["süß", "sauer"],
+  ["dick", "dünn"], ["lang", "kurz"], ["voll", "leer"], ["nass", "trocken"], ["weich", "hart"]];
+const ADJ_KARTEN = [["🍰", "süß"], ["☕", "heiß"], ["🧊", "kalt"], ["🐢", "langsam"], ["🌙", "dunkel"], ["🔊", "laut"], ["🌈", "bunt"], ["😊", "fröhlich"], ["🧸", "weich"]];
+const ADJ_KOERBE = { adj: ["✨ Wie-Wort", "In diesen Korb kommen Wörter, die sagen, wie etwas ist."], nomen: VERB_KOERBE.nomen, verb: VERB_KOERBE.verb };
+schritt("d_adjektive", "cafe", "otto", ["paare", "muell"], "Adjectives and pairs of opposites",
+  "Ich schreibe Schilder für meine Kuchen. Was ist das Gegenteil?", {
+  gen(rng, s){
+    if(s === 0 || ja(rng, s === 1 ? .4 : .5)){ const P = ziehe(rng, GEGENTEIL, 3 + (s > 0 ? 1 : 0)), M = misch(rng, P).map(p => ja(rng) ? p : [p[1], p[0]]);
+      return { art: "paare", item: { k: "Gegenteile", l: M.map(p => p[0]), r: M.map(p => p[1]), rn: M.map(p => `Das Gegenteil von ${p[1]} ist ${p[0]}.`),
+        h1: "Sag: nicht groß, sondern … Was ist das Gegenteil?", bitte: "Ich schreibe Schilder für meine Kuchen. Leg immer zwei Gegenteile zusammen." } }; }
+    const t = [...ziehe(rng, ADJ_KARTEN, 3).map(([e, w]) => [e, w, "adj", `etwas kann ${w} sein`]), ...ziehe(rng, NOMEN_VERB, 2).map(([e, w, a]) => [e, w, "nomen", a]),
+      ...ziehe(rng, VERBEN, s).map(([e, w]) => [e, w, "verb", `man kann ${w}`])];
+    const koerbe = s > 0 ? ADJ_KOERBE : { adj: ADJ_KOERBE.adj, nomen: ADJ_KOERBE.nomen };
+    return { art: "muell", item: { t: misch(rng, t), koerbe, h1: "Sagt das Wort, wie etwas ist? Dann ist es ein Wie-Wort.", lob: "Du hast die Wie-Wörter erkannt.",
+      dank: "Danke! Jetzt passen meine Schilder.", bitte: "Ich sortiere meine Wortkarten. Welche sagen, wie etwas ist?" } }; },
+  zeigen: ["Adjektive sagen, wie etwas ist.", "Der Kakao ist heiß, der Kuchen ist süß.", "Man nennt sie auch Wie-Wörter.", "Viele Adjektive haben ein Gegenteil, zum Beispiel heiß und kalt."],
+  merkheft: "Adjektive sagen, wie etwas ist, zum Beispiel groß und klein." });
+
+// Genau beschreiben: welches Ding ist gemeint, oder welche Beschreibung sagt alles
+const GENAU_WELCHES = [
+  { text: ["Otto hat drei Tassen.", "Die rote Tasse ist groß.", "Die blaue Tasse ist klein und neu.", "Die grüne Tasse ist klein und alt."], q: "Welche ist die kleine neue Tasse?", s: 2,
+    o: ["die blaue Tasse", "die grüne Tasse", "die rote Tasse", "keine von ihnen"], w: ["", "Die grüne Tasse ist klein, aber alt.", "Die rote Tasse ist groß.", "Eine Tasse passt genau."] },
+  { text: ["Lotte hat drei Blumen.", "Die gelbe Blume ist hoch.", "Die rote Blume ist klein und duftet.", "Die weiße Blume ist klein und duftet nicht."], q: "Welche ist die kleine duftende Blume?", s: 2,
+    o: ["die rote Blume", "die weiße Blume", "die gelbe Blume", "keine von ihnen"], w: ["", "Die weiße Blume duftet nicht.", "Die gelbe Blume ist hoch, nicht klein.", "Eine Blume passt genau."] },
+  { text: ["Im Laden liegen drei Äpfel.", "Der grüne Apfel ist sauer.", "Der rote Apfel ist süß und groß.", "Der gelbe Apfel ist süß und klein."], q: "Welcher ist der kleine süße Apfel?", s: 3,
+    o: ["der gelbe Apfel", "der rote Apfel", "der grüne Apfel", "keiner von ihnen"], w: ["", "Der rote Apfel ist süß, aber groß.", "Der grüne Apfel ist sauer.", "Ein Apfel passt genau."] },
+  { text: ["Mila hat drei Mützen.", "Die blaue Mütze ist warm und weich.", "Die rote Mütze ist warm und kratzig.", "Die gelbe Mütze ist dünn."], q: "Welche ist die warme weiche Mütze?", s: 1,
+    o: ["die blaue Mütze", "die rote Mütze", "die gelbe Mütze", "keine von ihnen"], w: ["", "Die rote Mütze ist warm, aber kratzig.", "Die gelbe Mütze ist dünn, nicht warm.", "Eine Mütze passt genau."] },
+  { text: ["Emil hat drei Pakete.", "Das braune Paket ist schwer.", "Das weiße Paket ist leicht und rund.", "Das blaue Paket ist leicht und eckig."], q: "Welches ist das leichte eckige Paket?", s: 3,
+    o: ["das blaue Paket", "das weiße Paket", "das braune Paket", "keins von ihnen"], w: ["", "Das weiße Paket ist leicht, aber rund.", "Das braune Paket ist schwer.", "Ein Paket passt genau."] }];
+const GENAU_SAGEN = [
+  { text: ["Das ist Ottos Haus.", "Es ist neu.", "Es ist blau."], o: ["das neue blaue Haus", "das alte rote Haus", "das Haus", "ein neues Haus"], w: ["", "Ottos Haus ist neu und blau.", "Das stimmt, sagt aber nicht, wie das Haus ist.", "Da fehlt, dass es blau ist."] },
+  { text: ["Das ist Milas Mütze.", "Sie ist warm.", "Sie ist rot."], o: ["die warme rote Mütze", "die dünne blaue Mütze", "die Mütze", "eine warme Mütze"], w: ["", "Milas Mütze ist warm und rot.", "Das stimmt, sagt aber nicht, wie die Mütze ist.", "Da fehlt, dass sie rot ist."] },
+  { text: ["Das ist Lottes Blume.", "Sie ist klein.", "Sie ist gelb."], o: ["die kleine gelbe Blume", "die große rote Blume", "die Blume", "eine kleine Blume"], w: ["", "Lottes Blume ist klein und gelb.", "Das stimmt, sagt aber nicht, wie die Blume ist.", "Da fehlt, dass sie gelb ist."] },
+  { text: ["Das ist Emils Paket.", "Es ist schwer.", "Es ist braun."], o: ["das schwere braune Paket", "das leichte weiße Paket", "das Paket", "ein schweres Paket"], w: ["", "Emils Paket ist schwer und braun.", "Das stimmt, sagt aber nicht, wie das Paket ist.", "Da fehlt, dass es braun ist."] },
+  { text: ["Das ist Fridolins Fisch.", "Er ist lang.", "Er ist silbern."], o: ["der lange silberne Fisch", "der kurze rote Fisch", "der Fisch", "ein langer Fisch"], w: ["", "Fridolins Fisch ist lang und silbern.", "Das stimmt, sagt aber nicht, wie der Fisch ist.", "Da fehlt, dass er silbern ist."] }];
+schritt("d_adjektive_beschreiben", "puppen", "katze", ["textfrage"], "Describe exactly with adjectives (the new blue house)",
+  "Im Puppenhaus suche ich etwas. Lies genau: Welche ist die kleine neue Tasse?", {
+  gen(rng, s){ const sagen = s === 2 || (s === 1 && ja(rng, .4)), x = sagen ? eins(rng, GENAU_SAGEN) : eins(rng, GENAU_WELCHES), o = misch(rng, [0, 1, 2, 3]);
+    const q = sagen ? "Wie sagst du es kurz und genau?" : x.q;
+    return { art: "textfrage", item: { text: x.text, q, o: o.map(i => x.o[i]), a: o.indexOf(0), s: sagen ? 1 : x.s, warum: o.map(i => x.w[i]),
+      ...(sagen ? { hilfe: ["Lies alles, was über das Ding gesagt wird.", "Hier steht eins davon, das andere steht dahinter.", "Ich lese es dir vor. Welche Antwort sagt beides?"] } : {}),
+      lob: "Du hast genau auf die Wie-Wörter geachtet.", bitte: `Lies genau. ${q}` } }; },
+  zeigen: ["Mit Adjektiven beschreibe ich genau.", "Das Haus ist neu, und das Haus ist blau.", "Kürzer sage ich: das neue blaue Haus.", "Jetzt weiß jeder, welches Haus ich meine."],
+  merkheft: "Adjektive vor dem Nomen beschreiben genau: das neue blaue Haus." });
+
+// ie durch Verlängern: [Bild, vor der Lücke, nach der Lücke, erste Silbe, zweite Silbe, Verb?]
+const IE_LANG = [["🐾", "T", "r", "Tie", "re"], ["✉️", "Br", "f", "Brie", "fe"], ["🎵", "L", "d", "Lie", "der"], ["🐂", "St", "r", "Stie", "re"], ["🎲", "Sp", "l", "Spie", "le"], ["🎯", "Z", "l", "Zie", "le"]];
+const IE_KURZ = [["🧒", "K", "nd", "Kin", "der"], ["🖼️", "B", "ld", "Bil", "der"], ["💨", "W", "nd", "Win", "de"], ["💍", "R", "ng", "Rin", "ge"], ["🖊️", "St", "ft", "Stif", "te"]];
+const I_VERB = [["🥤", "er tr", "nkt", "trin", "ken", true], ["🎤", "sie s", "ngt", "sin", "gen", true], ["🏊", "er schw", "mmt", "schwim", "men", true], ["🪑", "sie s", "tzt", "sit", "zen", true]];
+const IE_VERB = [["🧸", "er sp", "lt", "spie", "len", true], ["🐦", "sie fl", "gt", "flie", "gen", true], ["🛏️", "er l", "gt", "lie", "gen", true], ["🛒", "sie sch", "bt", "schie", "ben", true]];
+function ieWeiter([pic, pre, post, l1, l2, verb]){ const lang = l1.includes("ie"), sil = `${l1} – ${l2}`, hl = lang ? `${l1.replace("ie", "iii")} – ${l2}` : sil;
+  return { art: "weiterschwingen", item: { pic, pre, post, ans: lang ? "ie" : "i", tiles: ["i", "ie"],
+    hilfe: [verb ? "Sag die Grundform: wir …" : "Verlängere das Wort: Wie heißt es, wenn es zwei sind?", [hl, lang ? "Hör mal, wie lang das i klingt." : "Hör mal, wie kurz das i klingt."],
+      lang ? ["langes i", "Ein langes i schreibt man meistens ie. Zieh du die Buchstaben.", sil] : ["kurzes i", "Ein kurzes i schreibt man nur mit i. Zieh du den Buchstaben.", sil]],
+    lob: "Du hast das Wort verlängert und genau hingehört.", bitte: `Auf dem Paket fehlt ein Stück: ${pre}_${post}. Kommt i oder ie hinein?` } }; }
+schritt("d_ie_weiter", "post", "emil", ["weiterschwingen"], "ie words: make them longer (Tier – Tiere, er spielt – spielen)",
+  "Auf dem Paket fehlt ein Stück: T_r. Kommt i oder ie hinein?", {
+  // kurzes i auf jeder Stufe, damit nie „immer ie“ reicht; Verben ab Stufe 1
+  // Stufe 2 meist Verben: dort muss sie erst die Grundform bilden
+  gen(rng, s){ const lang = ja(rng, .55), verb = s === 2 ? ja(rng, .7) : s === 1 && ja(rng, .4);
+    return ieWeiter(eins(rng, verb ? (lang ? IE_VERB : I_VERB) : lang ? IE_LANG : IE_KURZ)); },
+  zeigen: ["Bei Tier höre ich das i nicht so genau.", "Ich verlängere das Wort: zwei Tie – re.", "Jetzt höre ich das lange i am Ende der ersten Silbe.", "Darum schreibe ich Tier mit ie.",
+    "Bei Verben sage ich die Grundform: er spielt, wir spie – len."],
+  merkheft: "Kurze Wörter verlängere ich: Tier – Tie-re, dann höre ich das lange ie." });
+
+// ä oder e: ein verwandtes Wort mit a? [Bild, vor der Lücke, nach der Lücke, verwandtes Wort, ganzes Wort]
+const AE_N = [["⚽", "B", "lle", "ein Ball", "Bälle"], ["🖐️", "H", "nde", "eine Hand", "Hände"], ["🍃", "Bl", "tter", "ein Blatt", "Blätter"], ["🌲", "W", "lder", "ein Wald", "Wälder"],
+  ["🥛", "Gl", "ser", "ein Glas", "Gläser"], ["🦷", "Z", "hne", "ein Zahn", "Zähne"], ["🚲", "R", "der", "ein Rad", "Räder"], ["🏡", "G", "rten", "ein Garten", "Gärten"]];
+const AE_V = [["🚗", "er f", "hrt", "wir fahren", "er fährt"], ["😴", "sie schl", "ft", "wir schlafen", "sie schläft"], ["🎒", "er tr", "gt", "wir tragen", "er trägt"], ["🧼", "sie w", "scht", "wir waschen", "sie wäscht"]];
+const E_N = [["🛏️", "B", "tten", "ein Bett", "Betten"], ["🌾", "F", "lder", "ein Feld", "Felder"], ["🪺", "N", "ster", "ein Nest", "Nester"], ["🍽️", "T", "ller", "ein Teller", "Teller"],
+  ["🕯️", "K", "rzen", "eine Kerze", "Kerzen"]];
+const E_V = [["🏃", "er r", "nnt", "wir rennen", "er rennt"], ["✍️", "sie l", "rnt", "wir lernen", "sie lernt"], ["🐕", "er b", "llt", "wir bellen", "er bellt"],
+  ["🧹", "sie f", "gt", "wir fegen", "sie fegt"], ["👋", "er k", "nnt", "wir kennen", "er kennt"]];
+function aeItem([pic, pre, post, verwandt, ganz], ae){
+  return { art: "weiterschwingen", item: { pic, pre, post, ans: ae ? "ä" : "e", tiles: ["ä", "e"],
+    hilfe: ["Such ein verwandtes Wort und hör, ob ein a darin ist.", [verwandt, "So heißt das verwandte Wort."],
+      ae ? ["a → ä", "Im verwandten Wort steht ein a, darum schreibt man ä. Zieh du den Buchstaben.", `${verwandt}, ${ganz}`]
+        : ["kein a", "Im verwandten Wort steht kein a, darum schreibt man e. Zieh du den Buchstaben.", `${verwandt}, ${ganz}`]],
+    lob: "Du hast ein verwandtes Wort gesucht.", bitte: `Auf meinem Schild fehlt ein Buchstabe: ${pre}_${post}. Kommt ä oder e hinein?` } }; }
+schritt("d_ae_ableiten", "laden", "hilde", ["weiterschwingen"], "Words with ä: find a related word with a",
+  "Auf meinem Schild fehlt ein Buchstabe: B_lle. Kommt ä oder e hinein?", {
+  // e-Wörter auf jeder Stufe, damit nie „immer ä“ reicht; Verben ab Stufe 1
+  // Stufe 2 meist Verben: das verwandte Wort ist dort die Grundform
+  gen(rng, s){ const ae = ja(rng, .55), verb = s === 2 ? ja(rng, .7) : s === 1 && ja(rng, .4);
+    return aeItem(eins(rng, verb ? (ae ? AE_V : E_V) : ae ? AE_N : E_N), ae); },
+  zeigen: ["Bei Bälle klingt das ä fast wie ein e.", "Ich suche ein verwandtes Wort: ein Ball.", "Ball schreibe ich mit a.", "Darum schreibe ich Bälle mit ä.",
+    "Bei Betten gibt es kein verwandtes Wort mit a, also schreibe ich e."],
+  merkheft: "Höre ich ä oder e, suche ich ein verwandtes Wort mit a: Bälle kommt von Ball." });
 
 // ==================== HSU ====================
 const REGELN = [
