@@ -72,6 +72,13 @@ function blitzSchritt(steps, inhalt, skills, today){
   const s = leseSchritte(skills, inhalt).find(s => (inhalt.steps[s.id].arten || []).includes("blitzwort") && !inhalt.steps[s.id].saetze && (imUeben(steps[s.id]) || faellig(steps[s.id], today)));
   return s ? s.id : null;
 }
+// Aufwärmen vor dem Lesen, jeden Tag (Ticket 36): schritt = der Blitz-Schritt, wenn die Wörter für ihn zählen (im Üben
+// oder fällig), sonst null; stufe = ihre Stufe in diesem Schritt (stufeVon(r, today), gemeistert 2), vorher 0.
+// alle: auch übersprungene Schritte, damit ihr Tempo bleibt, wenn der Schritt nicht mehr zählt.
+function aufwaermen(steps, inhalt, skills, today, stufeVon, alle = skills){
+  const s = leseSchritte(alle, inhalt).find(s => (inhalt.steps[s.id].arten || []).includes("blitzwort") && !inhalt.steps[s.id].saetze), r = s && steps[s.id];
+  return { schritt: blitzSchritt(steps, inhalt, skills, today), stufe: r ? stufeVon(r, today) : 0 };
+}
 // Blitzzeit je Stufe 0–2, wie bei d_lesen_blitz (inhalt.js)
 const BLITZ_MS = [1500, 1000, 700];
 const blitz = (buch, schritt, stufe = 0) => (buch.blitz || []).slice(0, 5).map(a => ({ ...a, item: { ...a.item, ms: BLITZ_MS[stufe] }, schritt }));
@@ -97,6 +104,6 @@ function tempo(seitenZeiten){
   for(const s of seitenZeiten) if(s.woerter > 0 && s.sekunden > 0){ const t = tage[s.date] = tage[s.date] || { w: 0, s: 0 }; t.w += s.woerter; t.s += s.sekunden; }
   return Object.keys(tage).sort().map(date => ({ date, wpm: Math.round(tage[date].w / tage[date].s * 60) }));
 }
-const R = { LESEZEIT, genug, szene, seiten, text, umblaettern, seitenZeit, nachDemBuch, blitzSchritt, blitz, deckel, stufe, aufsteigen, regal, tempo };
+const R = { LESEZEIT, genug, szene, seiten, text, umblaettern, seitenZeit, nachDemBuch, blitzSchritt, aufwaermen, blitz, deckel, stufe, aufsteigen, regal, tempo };
 if(typeof module !== "undefined" && module.exports) module.exports = R; else root.LESEN = R;
 })(this);

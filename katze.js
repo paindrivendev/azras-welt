@@ -22,7 +22,7 @@ const el = id => document.getElementById(id), box = () => el("pflege");
 const name = () => (S().katze || {}).name || "", farbe = () => (S().katze || {}).farbe || "lila";
 const heute = () => root.WELT.today();
 const BITTE = { futter: "Miau! Ich hätte gern etwas zu fressen.", buerste: "Bürstest du mich ein bisschen?", spielen: "Spielst du mit mir? Ich mag die Feder so gern!" };
-const DANKE = { futter: "Mmh, lecker! Danke, Azra.", buerste: "Schnurr! Mein Fell glänzt jetzt.", spielen: "Das war lustig! Noch einmal?" };
+const DANKE = { futter: "Lecker! Danke, Azra.", buerste: "Schnurr! Mein Fell glänzt jetzt.", spielen: "Das war lustig! Noch einmal?" };
 let aus = null; // laufende Animation beenden
 function sag(t){ el("pfC").innerHTML = `<span class="who">${esc(name())}</span>${esc(t)}`; el("pfC").hidden = false; root.WELT.sprich("katze", t); }
 function stand(){ S().katzePflege = norm(S().katzePflege); return S().katzePflege; }

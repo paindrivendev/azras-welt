@@ -180,7 +180,7 @@ function laufen(zeit){
   const ende = () => {
     if(done.length && done.every(r => r.skip)) return verschieben(); // alles übersprungen: wie "Alles später"
     const s = S(); el("wkAus").hidden = true; fachKnoepfe(null);
-    if(b.kind !== "frei" && !heute().fertig.includes(b.kind)){ heute().fertig.push(b.kind); s.zuletzt[b.ort] = D(); s.purse += 50; }
+    if(b.kind !== "frei" && !heute().fertig.includes(b.kind)){ heute().fertig.push(b.kind); s.zuletzt[b.ort] = D(); s.purse += 50; if(root.FREUNDE) root.FREUNDE.geholfenAm(b.ort); }
     ST.save(); el("wkBuehne").innerHTML = ""; el("wkC").hidden = true;
     sag("n", b.kind === "frei" ? "Danke, Azra, das war schön!" : b.raetsel ? "Danke, Azra, das Rätselheft ist fertig. Das hat Spaß gemacht!" : "Danke, Azra, du hast mir sehr geholfen!"); root.WELT.klimper();
     knopf("Fertig", () => { schliessen(); root.WELT.zeige(); });

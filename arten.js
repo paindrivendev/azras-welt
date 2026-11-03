@@ -92,7 +92,7 @@ A.art({ id: "bezahlen", fach: "mathe", titel: "Mit Münzen bezahlen", klang: "cl
   beispiel: [{ p: 65, thing: "Das Glitzerpapier" }, { p: 38, thing: "Die Haarspange für die Puppe" }, { p: 90, thing: "Die Bastelschere" },
     { p: 1240, geld: [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000], bitte: "Für den Lieferanten brauche ich genau 12 € 40 ct. Leg das Geld auf die Theke." }],
   mount(st, it, G){ G.say("n", it.bitte || `${it.thing} kostet ${fmt(it.p)}. Leg das Geld auf die Theke.`);
-    coinGame(st, G, { tag: `🏷️ ${fmt(it.p)}`, target: it.p, geld: it.geld, react: s => s < it.p ? `Hmm, da fehlen noch ${fmt(it.p - s)}.` : `Oh, das sind ${fmt(s - it.p)} zu viel.` }); },
+    coinGame(st, G, { tag: `🏷️ ${fmt(it.p)}`, target: it.p, geld: it.geld, react: s => s < it.p ? `Da fehlen noch ${fmt(it.p - s)}.` : `Oh, das sind ${fmt(s - it.p)} zu viel.` }); },
   hint(r, it, G){ if(r === 1) return it.geld ? "Fang mit dem größten Geld an, das noch passt." : "Fang mit der größten Münze an, die noch passt.";
     if(r === 2){ G.ref.showSum = true; G.ref.upd(); return "Ich schreibe mit, wie viel schon daliegt."; }
     G.ref.clear(); G.ref.glow(greedy(it.p, geldSatz(it))); return it.geld ? "Dieses Geld passt zusammen. Leg du es hin." : "Diese Münzen passen zusammen. Leg du sie hin."; },
@@ -105,7 +105,7 @@ A.art({ id: "wechselgeld", fach: "mathe", titel: "Wechselgeld geben", klang: "cl
     { p: 370, pa: 220, pb: 150, bez: 500, geld: [1, 2, 5, 10, 20, 50, 100, 200], thing: "ein Muffin und ein Saft", tag: "2 € 20 ct + 1 € 50 ct · bezahlt: 5 €" }],
   mount(st, it, G){ G.say("n", it.bitte || `Mein ${it.thing} kostet ${fmt(it.p)}. Ich gebe dir 1 €. Bekomme ich Geld zurück?`);
     const bez = it.bez || 100, z = bez - it.p; // bez (optional): womit bezahlt wurde, sonst 1 €
-    coinGame(st, G, { tag: it.tag || `${it.thing}: ${fmt(it.p)} · bezahlt: 1 €`, target: z, geld: it.geld, react: s => s < z ? `Hmm, da fehlen mir noch ${fmt(z - s)}.` : `Oh, das sind ${fmt(s - z)} zu viel.` }); },
+    coinGame(st, G, { tag: it.tag || `${it.thing}: ${fmt(it.p)} · bezahlt: 1 €`, target: z, geld: it.geld, react: s => s < z ? `Da fehlen mir noch ${fmt(z - s)}.` : `Oh, das sind ${fmt(s - z)} zu viel.` }); },
   hint(r, it, G){ const bez = it.bez || 100;
     if(bez !== 100){ const euro = Math.ceil(it.p / 100) * 100;
       if(r === 1) return `Zähl von ${fmt(it.p)} weiter bis ${fmt(bez)}.`;
@@ -165,7 +165,7 @@ A.art({ id: "rechenstrich", fach: "mathe", titel: "Springen am Rechenstrich", kl
   hint(r, it, G){ const v = it.minus ? "−" : "+", T = teile(it), ueber = T.ueber;
     if(r === 1) return ueber ? (it.minus ? "Spring erst rückwärts bis zum Zehner." : "Spring erst bis zum nächsten Zehner.") : it.b >= 10 ? `Zerleg ${it.b}: Wie viele Zehner, wie viele Einer?` : `Welche Sprünge ergeben zusammen ${it.b}?`;
     if(r === 2){ const zl = T.length > 1 ? T : greedy(it.b, [10, 5, 1]);
-      if(zl.length < 2){ G.$("#ze").textContent = v + it.b; return "Das geht mit einem einzigen Sprung."; }
+      if(zl.length < 2) return "Das geht mit einem einzigen Sprung. Welcher Knopf ist genau so weit?";
       G.$("#ze").textContent = `${it.b} = ${zl.join(" + ")}`; return "So kannst du die Zahl zerlegen."; }
     G.ref.J.length = 0; G.ref.draw(); const seq = T.flatMap(t => greedy(t, [10, 5, 1])); G.$$("[data-j]").forEach(b => b.classList.toggle("glow", seq.includes(+b.dataset.j)));
     G.$("#ze").textContent = T.map(t => v + t).join("  "); return ueber ? "Erst bis zum Zehner, dann der Rest. Spring du." : "Erst die Zehnersprünge, dann der Rest. Spring du."; },
@@ -173,27 +173,43 @@ A.art({ id: "rechenstrich", fach: "mathe", titel: "Springen am Rechenstrich", kl
   probe: { falsch: st => springe(st, [1]), richtig: (st, it) => springe(st, greedy(it.b, [10, 5, 1])) } });
 
 // Ziffernblock: mit Lücke {a, t, thing} (34 + _ = 50); ohne Lücke {a, b} (8 + 5 = _) oder {wort, res} (Zahlwort → Ziffern)
-const loesung = it => it.wort ? it.res : it.b != null ? it.a + it.b : it.t - it.a;
+// Ticket 37: ohne Lücke auch {op: "-"} (43 − 5 = _) und {hilfe: [Satz, [Zeile, Satz], [Zeile, Satz]]} (Hilfsaufgabe +9 = +10 − 1);
+// mit Lücke {einheit: "Brötchen"} statt Geld; lob (optional)
+const loesung = it => it.wort ? it.res : it.b != null ? (it.op === "-" ? it.a - it.b : it.a + it.b) : it.t - it.a;
+// Einer zu einer Zehnerzahl ohne Übergang: wie die kleine Aufgabe; minus über den Zehner: erst zurück bis zum Zehner
+const einerFall = it => it.b != null && it.b < 10 && (it.op === "-" || (it.a % 10 > 0 && it.a % 10 + it.b <= 9));
+function einerHilfe(it){ const m = it.op === "-", z = m ? "−" : "+", e = it.a % 10, k = m ? e - it.b : e + it.b, T = it.a - e;
+  if(m && it.b > e && e === 0) return [`Denk an die kleine Aufgabe 10 − ${it.b}.`, [`10 − ${it.b} = ?`, "Das weißt du schon."], [`10 − ${it.b} = ${10 - it.b}, dazu die ${T - 10}`, "Jetzt noch die Zehner dazu, dann tipp."]];
+  if(m && it.b > e) return ["Rechne erst zurück bis zum Zehner.", [`${it.a} − ${e} − ${it.b - e}`, `So zerlege ich die ${it.b}.`], [`${it.a} − ${e} = ${T}, ${T} − ${it.b - e} = ?`, "Rechne du den letzten Schritt."]];
+  return [`Denk an die kleine Aufgabe ${e} ${z} ${it.b}.`, [`${e} ${z} ${it.b} = ?`, "Rechne erst mit den Einern."], [`${e} ${z} ${it.b} = ${k}, dazu die ${T}`, "Jetzt noch die Zehner dazu, dann tipp."]]; }
 const teilpunkt = it => { const res = it.a + it.b, z = Math.ceil((it.a + 1) / 10) * 10; return z < res ? z : it.a + Math.floor(it.b / 10) * 10; };
 A.art({ id: "ergaenzen", fach: "mathe", titel: "Ergänzen mit Ziffern tippen", klang: "clink",
-  en: { title: "Type the number on a keypad", does: "types the missing number of a gap sum (34 + _ = 50) on a keypad. Without a gap: types the result of a plain sum (8 + 5 = ?) or a number word in digits." },
+  en: { title: "Type the number on a keypad", does: "types the missing number of a gap sum (34 + _ = 50) on a keypad. Without a gap: types the result of a plain sum (8 + 5 = ?, 43 − 5 = ?) or a number word in digits." },
   beispiel: [{ a: 34, t: 50, thing: "Der Lolli" }, { a: 27, t: 40, thing: "Das Stickerheft" }, { a: 72, t: 100, thing: "Der Puppenhut" },
-    { a: 8, b: 5 }, { a: 37, b: 6 }, { wort: "vierundsiebzig", res: 74 }, { wort: "achtundvierzig", res: 48 }],
+    { a: 8, b: 5 }, { a: 37, b: 6 }, { wort: "vierundsiebzig", res: 74 }, { wort: "achtundvierzig", res: 48 },
+    { a: 42, b: 5 }, { a: 43, b: 5, op: "-" }, { a: 68, b: 4, op: "-" },
+    { a: 36, b: 9, hilfe: ["Rechne erst mit 10 statt mit 9.", ["36 + 10 − 1", "So rechne ich mit der Hilfsaufgabe."], ["36 + 10 = 46, 46 − 1 = ?", "Rechne du den letzten Schritt."]] },
+    { a: 46, t: 50, einheit: "Brötchen", bitte: "In der Tüte sind 46 Brötchen. Wie viele fehlen bis 50?" }],
   mount(st, it, G){
     if(it.wort){ G.say("n", it.bitte || `Auf dem Paket steht: ${it.wort}. Tipp die Hausnummer mit Ziffern.`);
       st.innerHTML = `<div class="scene"><div class="tag">📦 ${it.wort}</div><div class="hintline" id="h"></div><div class="big"><span class="answerbox"></span></div><div class="keypad"></div></div>`;
-    } else if(it.b != null){ G.say("n", it.bitte || `Rechne ${it.a} + ${it.b} und tipp das Ergebnis.`);
-      st.innerHTML = `<div class="scene"><div class="big">${it.a} + ${it.b} = <span class="answerbox"></span></div><div class="hintline" id="h"></div><div id="rs" class="rs"></div><div class="keypad"></div></div>`;
+    } else if(it.b != null){ const z = it.op === "-" ? "−" : "+"; G.say("n", it.bitte || `Rechne ${it.a} ${z} ${it.b} und tipp das Ergebnis.`);
+      st.innerHTML = `<div class="scene"><div class="big">${it.a} ${z} ${it.b} = <span class="answerbox"></span></div><div class="hintline" id="h"></div><div id="rs" class="rs"></div><div class="keypad"></div></div>`;
     } else { G.say("n", it.bitte || `Du hast ${fmt(it.a)}. ${it.thing} kostet ${fmt(it.t)}. Wie viel fehlt dir noch?`);
       st.innerHTML = `<div class="scene"><div class="big">${it.a} + <span class="answerbox"></span> = ${it.t}</div><div id="rs" class="rs"></div><div class="keypad"></div></div>`; }
     const res = loesung(it);
-    const react = x => it.wort ? `${x} heißt „${zahlwort(x)}“.` : it.b != null ? (x > it.a ? `${it.a} + ${x - it.a} wäre ${x}.` : `${x} ist weniger als ${it.a}.`) : `Mit ${x} ct mehr hättest du ${fmt(it.a + x)}.`;
+    const react = x => it.wort ? `${x} heißt „${zahlwort(x)}“.`
+      : it.b != null && it.op === "-" ? (x < it.a ? `${it.a} − ${it.a - x} wäre ${x}.` : `${x} ist nicht weniger als ${it.a}.`)
+      : it.b != null ? (x > it.a ? `${it.a} + ${x - it.a} wäre ${x}.` : `${x} ist weniger als ${it.a}.`)
+      : it.einheit ? `Mit ${x} ${it.einheit} mehr wären es ${it.a + x}.` : `Mit ${x} ct mehr hättest du ${fmt(it.a + x)}.`;
     const kp = keypad(st, G, x => { if(x === res) G.solved(); else { G.miss(react(x)); kp.clear(); } }); },
   hint(r, it, G){
     if(it.wort){ const m = it.res > 20 && it.res < 100 && it.res % 10 ? /^(.+)und(.+)$/.exec(it.wort) : null;
       if(r === 1) return m ? "Hör genau hin: Bei diesem Wort kommen die Einer zuerst." : "Lies das Wort langsam, Silbe für Silbe.";
       if(r === 2){ G.$("#h").textContent = m ? `${m[1]} · und · ${m[2]}` : it.wort; return "Hier ist das Wort in Teilen."; }
       G.$("#h").textContent = m ? `${m[2]} = ${Math.floor(it.res / 10)} Zehner · ${m[1]} = ${it.res % 10} Einer` : it.wort; return "Tipp erst die Zehner, dann die Einer."; }
+    if(it.hilfe || einerFall(it)){ const x = (it.hilfe || einerHilfe(it))[r - 1]; if(!x) return null;
+      if(typeof x === "string") return x; G.$("#h").textContent = x[0]; return x[1]; }
     if(it.b != null){ const res = it.a + it.b, m = teilpunkt(it), ueber = m === Math.ceil((it.a + 1) / 10) * 10;
       if(r === 1) return ueber ? "Rechne erst bis zum nächsten Zehner." : `Zerleg ${it.b}: Wie viele Zehner, wie viele Einer?`;
       const marks = [{ v: it.a }, ...(m !== it.a ? [{ v: m, t: r === 3 ? m : "" }] : []), { v: res, t: "?" }];
@@ -201,12 +217,13 @@ A.art({ id: "ergaenzen", fach: "mathe", titel: "Ergänzen mit Ziffern tippen", k
       G.$("#rs").innerHTML = strichSVG(it.a - 2, res + 2, marks, arcs);
       if(r === 2) return "So kannst du die Zahl zerlegen.";
       if(m !== it.a) G.$("#h").textContent = `${it.a} + ${m - it.a} = ${m}`; return `Von ${m} aus noch ${res - m} weiter, dann tipp das Ergebnis.`; }
-    const z = Math.ceil(it.a / 10) * 10;
-    if(r === 1) return "Rechne erst bis zum nächsten Zehner.";
-    const arcs = r === 2 ? [{ f: it.a, t: z }, { f: z, t: it.t }] : [{ f: it.a, t: z, l: "+" + (z - it.a) }, { f: z, t: it.t, l: "+" + (it.t - z) }];
-    G.$("#rs").innerHTML = strichSVG(it.a - 2, it.t + 2, [{ v: it.a }, { v: z }, { v: it.t }], arcs);
+    const z = Math.ceil(it.a / 10) * 10, eins = z === it.t || z === it.a;
+    if(r === 1) return z === it.t ? `Wie viele fehlen von ${it.a} bis zum nächsten Zehner?` : z === it.a ? `Zähl von ${it.a} aus weiter bis ${it.t}.` : "Rechne erst bis zum nächsten Zehner.";
+    const sp = (eins ? [[it.a, it.t]] : [[it.a, z], [z, it.t]]).map(([f, t]) => r === 2 ? { f, t } : { f, t, l: "+" + (t - f) });
+    G.$("#rs").innerHTML = strichSVG(it.a - 2, it.t + 2, eins ? [{ v: it.a }, { v: it.t }] : [{ v: it.a }, { v: z }, { v: it.t }], sp);
+    if(eins) return r === 2 ? "Hier ist der Sprung. Wie groß ist er?" : "Lies die Zahl am Sprung und tipp sie.";
     return r === 2 ? "Hier sind die zwei Sprünge. Wie groß ist jeder?" : "Zähl die beiden Sprünge zusammen und tipp das Ergebnis."; },
-  praise: it => it.wort ? "Du hast das Wort genau gelesen." : "Du hast erst bis zum Zehner gerechnet.",
+  praise: it => it.lob || (it.wort ? "Du hast das Wort genau gelesen." : einerFall(it) && !(it.op === "-" && it.b > it.a % 10) ? "Du hast an die kleine Aufgabe gedacht." : "Du hast erst bis zum Zehner gerechnet."),
   probe: { falsch: (st, it) => tippZahl(st, loesung(it) + 1), richtig: (st, it) => tippZahl(st, loesung(it)) } });
 
 // Blitzrechnen (Ticket 33): Hilfe je nach Aufgabe – Zehnerzahlen wie Einer, über die 10 in zwei Schritten, nur die Einer, Punkte
@@ -597,10 +614,38 @@ A.art({ id: "stolper", fach: "deutsch", titel: "Stolperwort finden", klang: "pop
   hint(r, it, G){ const sp = G.$$("#s span"), xi = sp.findIndex(s => sauber(s.textContent) === it.x), half = Math.ceil(sp.length / 2), inFirst = xi < half;
     if(r === 1) return "Lies den Satz leise. Wo stolperst du?";
     if(r === 2){ sp.forEach((s, i) => s.classList.toggle("dim", (i < half) !== inFirst)); return "In diesem Teil steckt es."; }
-    sp.forEach(s => s.classList.remove("dim")); nacheinander(sp[0], xi, 420, i => sp[i].classList.add("hl")); G.sprich(sp.slice(0, xi).map(s => s.textContent).join(" ") + " … hm?");
+    sp.forEach(s => s.classList.remove("dim")); nacheinander(sp[0], xi, 420, i => sp[i].classList.add("hl")); G.sprich(sp.slice(0, xi).map(s => s.textContent).join(" ") + " …");
     return "Ich lese vor, bis ich stolpere. Tipp du das Wort."; },
   praise: () => "Du hast den Satz Wort für Wort gelesen.",
   probe: { falsch: (st, it) => tippe([...st.querySelectorAll("#s span")].find(s => sauber(s.textContent) !== it.x)), richtig: (st, it) => tippe([...st.querySelectorAll("#s span")].find(s => sauber(s.textContent) === it.x)) } });
+
+// Groß oder klein? (Ticket 37, Karibu Kap. 5): der Satz steht ganz klein da; sie tippt die Wörter, die groß werden
+// (Satzanfang und Nomen), dann „Fertig“. {w: Wörter klein, g: Stellen, die groß werden, p: {Stelle: Artikelprobe}}
+const gross = w => w[0].toUpperCase() + w.slice(1);
+function grossTippen(st, it, soll){ st.querySelectorAll("#s span").forEach(sp => { const i = +sp.dataset.i; if(sp.classList.contains("gross") !== soll.includes(i)) tippe(sp); }); tippe(st.querySelector("#go")); }
+A.art({ id: "gross", fach: "deutsch", titel: "Groß oder klein?", klang: "pop",
+  en: { title: "Capital or small?", does: "sees a sentence written all small and taps the words that need a capital letter (the first word and the nouns), then taps Fertig." },
+  beispiel: [{ w: ["die", "katze", "schläft."], g: [0, 1], p: { 1: "die Katze" } },
+    { w: ["der", "hund", "spielt", "mit", "dem", "ball."], g: [0, 1, 5], p: { 1: "der Hund", 5: "der Ball" } },
+    { w: ["heute", "liest", "das", "kleine", "kind", "ein", "buch."], g: [0, 4, 6], p: { 4: "das Kind", 6: "das Buch" } }],
+  mount(st, it, G){ G.say("n", it.bitte || "Mein Satz ist ganz klein geschrieben. Tipp die Wörter an, die groß werden.");
+    st.innerHTML = `<div class="scene"><div class="sentence" id="s">${it.w.map((w, i) => `<span data-i="${i}">${w}</span>`).join(" ")}</div><div class="hintline" id="h"></div><button class="btn" id="go">Fertig</button></div>`;
+    G.$$("#s span").forEach(sp => sp.onclick = () => { if(G.locked) return; const i = +sp.dataset.i, an = sp.classList.toggle("gross");
+      sp.textContent = an ? gross(it.w[i]) : it.w[i]; sp.classList.remove("glow"); G.klang("pop"); });
+    G.$("#go").onclick = () => { if(G.locked) return; const an = G.$$("#s span.gross").map(sp => +sp.dataset.i), zuviel = an.find(i => !it.g.includes(i)), fehlt = it.g.filter(i => !an.includes(i));
+      if(zuviel === undefined && !fehlt.length) return G.solved();
+      if(zuviel !== undefined) return G.miss(`„${it.w[zuviel].replace(/[.,!?]/g, "")}“ ist kein Nomen, das bleibt klein.`);
+      G.miss(fehlt.length === 1 ? "Ein Wort ist noch klein, das groß werden muss." : `${fehlt.length} Wörter sind noch klein, die groß werden müssen.`); }; },
+  hint(r, it, G){ const sp = G.$$("#s span"), an = i => sp[i].classList.contains("gross");
+    if(r === 1) return "Der Satzanfang wird groß, und Nomen werden groß. Kannst du der, die oder das davor sagen?";
+    if(r === 2){ if(!an(0)){ sp[0].classList.add("glow"); return "Das erste Wort im Satz schreibt man immer groß."; }
+      G.$("#h").textContent = `In diesem Satz werden ${it.g.length} Wörter groß.`; return "Zähl, wie viele du schon hast."; }
+    const zuviel = sp.findIndex((s, i) => an(i) && !it.g.includes(i)); if(zuviel >= 0){ sp[zuviel].classList.add("glow"); return "Das leuchtende Wort ist kein Nomen. Tipp es an, dann wird es wieder klein."; }
+    const i = it.g.find(i => i > 0 && !an(i)) ?? it.g.find(i => !an(i)); if(i === undefined) return null;
+    sp[i].classList.add("glow"); if(it.p[i]){ G.$("#h").textContent = `Probe: ${it.p[i]}`; return "Hier passt ein Artikel davor, also ist es ein Nomen. Tipp du es an."; }
+    return "Das leuchtende Wort wird groß. Tipp du es an."; },
+  thanks: () => "Danke! Jetzt ist mein Satz richtig geschrieben.", praise: () => "Du hast bei jedem Wort die Artikelprobe gemacht.",
+  probe: { falsch: (st, it) => grossTippen(st, it, []), richtig: (st, it) => grossTippen(st, it, it.g) } });
 
 // Lückenwort: am Ende {pre, long, alt} (weiterschwingen) oder irgendwo {pre, post, hilfe} mit beliebigen Kärtchen ("" = nichts)
 const kartchen = t => t === "" ? "nichts" : t;
@@ -713,16 +758,22 @@ A.art({ id: "textfrage", fach: "deutsch", titel: "Kurzer Text, eine Frage", klan
   en: { title: "Short text + a question", does: "reads a short text and taps the answer to a question about it." },
   beispiel: [{ text: MINA, q: "Wo schläft Mina am liebsten?", o: ["auf dem Bücherregal", "im Bett", "im Park", "im Korb"], a: 0, s: 2 },
     { text: MINA, q: "Was macht Mina, wenn es regnet?", o: ["Sie schläft.", "Sie schaut aus dem Fenster.", "Sie geht in den Park.", "Sie spielt mit Wolle."], a: 1, s: 3 },
-    { text: MINA, q: "Welche Farbe hat Mina?", o: ["schwarz", "weiß", "lila", "grau"], a: 2, s: 0 }],
+    { text: MINA, q: "Welche Farbe hat Mina?", o: ["schwarz", "weiß", "lila", "grau"], a: 2, s: 0 },
+    { text: ["Liebe Azra,", "ich lade dich zu meinem Fest ein.", "Wir feiern im Café.", "Dein Otto"], q: "Was fehlt noch in Ottos Einladung?", s: 2,
+      o: ["wann das Fest ist", "wo das Fest ist", "wer einlädt", "was gefeiert wird"], a: 0,
+      warum: ["", "Wo das Fest ist, steht schon da: im Café.", "Wer einlädt, steht schon da: Otto.", "Was gefeiert wird, steht schon da: ein Fest."],
+      hilfe: ["Frag dich: Wer, was, wann und wo?", "Hier steht, wo gefeiert wird.", "Wo, wer und was stehen schon da, eins fehlt noch."], lob: "Du hast an Wer, Was, Wann und Wo gedacht." }],
   mount(st, it, G){ G.say("n", it.bitte || it.q);
     st.innerHTML = `<div class="scene"><div class="text" id="t">${it.text.map((s, i) => `<span data-i="${i}">${s}</span>`).join(" ")}</div><div class="big" style="font-size:26px">${it.q}</div><div class="row" id="o"></div></div>`;
     const o = G.$("#o");
     shuffle(it.o.map((x, i) => [x, i])).forEach(([x, i]) => { const b = document.createElement("button"); b.className = "ans"; b.textContent = x; b.dataset.i = i; o.appendChild(b);
-      b.onclick = () => { if(G.locked) return; i === it.a ? G.solved() : G.miss(`„${x}“ – das steht so nicht im Text.`); }; }); },
-  hint(r, it, G){ if(r === 1) return "Such die Stelle im Text. Die Antwort steht darin.";
-    G.$(`#t span[data-i="${it.s}"]`).classList.add("hl"); if(r === 2) return "Hier ist die Stelle.";
-    G.sprich(it.text[it.s]); return "Ich lese dir die Stelle vor. Tipp dann die Antwort."; },
-  praise: () => "Du hast im Text nachgeschaut.",
+      b.onclick = () => { if(G.locked) return; i === it.a ? G.solved() : G.miss(it.warum ? it.warum[i] : `„${x}“ – das steht so nicht im Text.`); }; }); },
+  // warum (optional): ein Satz je Antwort für den Fall, dass sie sie tippt; hilfe: drei eigene Hilfesätze
+  hint(r, it, G){ const H = it.hilfe || ["Such die Stelle im Text. Die Antwort steht darin.", "Hier ist die Stelle.", "Ich lese dir die Stelle vor. Tipp dann die Antwort."];
+    if(r === 1) return H[0];
+    G.$(`#t span[data-i="${it.s}"]`).classList.add("hl"); if(r === 2) return H[1];
+    G.sprich(it.text[it.s]); return H[2]; },
+  praise: it => it.lob || "Du hast im Text nachgeschaut.",
   probe: { falsch: (st, it) => tippe(st.querySelector(`.ans[data-i="${it.a === 0 ? 1 : 0}"]`)), richtig: (st, it) => tippe(st.querySelector(`.ans[data-i="${it.a}"]`)) } });
 
 A.art({ id: "hoeren", fach: "deutsch", titel: "Zuhören und antworten", klang: "chime",

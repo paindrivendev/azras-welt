@@ -52,10 +52,11 @@ function aufgaben(liste, fertig){
     fertig: () => { lauf = null; fertig(erg); } });
 }
 function waehlen(buch){
-  const s = S(), schritt = R.blitzSchritt(s.steps, root.INHALT || { steps: {} }, lernbar(), D());
-  if(schritt && s.heute.blitz !== D() && (buch.blitz || []).length){
+  // jeden Tag vor dem ersten Buch (Ticket 36); zählt nur, solange der Blitz-Schritt geübt wird oder fällig ist
+  const s = S(), w = R.aufwaermen(s.steps, root.INHALT || { steps: {} }, lernbar(), D(), (r, d) => root.TAG.stufe(r, "ueben", d), root.SKILLS || []);
+  if(s.heute.blitz !== D() && (buch.blitz || []).length){
     s.heute.blitz = D(); ST.save(); sag("Zuerst lesen wir ein paar Blitzwörter.");
-    return aufgaben(R.blitz(buch, schritt, root.TAG.stufe(s.steps[schritt], "ueben", D())), () => lesen(buch));
+    return aufgaben(R.blitz(buch, w.schritt, w.stufe), () => lesen(buch));
   }
   lesen(buch);
 }

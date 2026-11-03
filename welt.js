@@ -88,6 +88,8 @@ function hud(){
     if(!SP().nurSpielen && !SP().einladungen().length) s += knopf(y, "neuerTag", "☀ Neuer Tag", "#8e5bd6"); // heute nichts mehr offen: Azra beginnt selbst den nächsten Tag
   }
   if(SP() && SP().offen) return s; // die Arbeitskarte zeigt ihre eigenen Sprechblasen
+  const z = window.FREUNDE && FREUNDE.offenerZettel(); // Ticket 38: der Zettel der Besorgung, die Katze liest ihn vor
+  if(z){ const w = z.length * 18 + 96; s += hot("zettel", `<g filter="url(#sh)"><rect x="${1570 - w}" y="864" width="${w}" height="100" rx="18" fill="#fffbe0"/></g><text x="${1594 - w}" y="926" class="lesen" font-size="34" fill="#3b2b52">📝 ${esc(z)}</text>`); }
   if(V.msg) s += bub(200, 30, 1100, NB[V.msg.who] ? NB[V.msg.who].name : "", V.msg.text);
   if(V.cat) s += bub(200, 800, 760, S().katze.name, V.cat);
   return s;
@@ -254,6 +256,10 @@ function karte(){
   const [hx, hy] = P(5.6, 12.8, 0);
   add(18.3, hot("ort:huegel", hit(hx, hy - 30, 56) + `<path d="M${hx - 70},${hy} Q${hx},${hy - 80} ${hx + 70},${hy}Z" fill="#b08a62"/><ellipse cx="${hx}" cy="${hy - 14}" rx="18" ry="8" fill="#5a4030"/>`));
   for(const n of W.NACHBARN) if(offen.includes(n.ort)){ const [x, y, k] = NB_AUF_KARTE[n.ort]; const [fx, fy] = P(x, y, 0); add(x + y + .1, hot(`ort:${n.ort}`, hit(fx, fy - 40, 48) + shadowed(P, x, y, 0, figur(n.art), k))); }
+  // Ticket 38: ihr Marktstand unter der Post
+  { const [mx, my] = P(8, 4.4, 0); add(12.4, hot("markt", hit(mx, my - 40, 50) + box(P, 7.6, 4.1, 0, .8, .5, .55, "#f6e7c8")
+      + [0, 1, 2, 3].map(i => poly(P, [[7.55 + i * .21, 4.05, 1], [7.76 + i * .21, 4.05, 1], [7.76 + i * .21, 4.65, .8], [7.55 + i * .21, 4.65, .8]], i % 2 ? "#fff" : "#e5607e")).join("")
+      + `<g filter="url(#sh)"><rect x="${mx - 44}" y="${my - 128}" width="88" height="34" rx="17" fill="#fff"/></g><text x="${mx}" y="${my - 104}" text-anchor="middle" class="ui" font-size="22" fill="#5a4a78">Markt</text>`)); }
   const st = kartenPlatz(), [tx, ty] = P(...st);
   add(st[0] + st[1] + .5, `<g id="tok" transform="translate(${tx} ${ty})" pointer-events="none"><ellipse rx="26" ry="9" fill="#2b2140" opacity=".18"/><g id="tokK" transform="scale(${V.links ? -.25 : .25} .25)">${figur("azra")}</g></g>`);
   items.sort((a, b) => a.d - b.d).forEach(i => s += i.svgText);
@@ -262,6 +268,7 @@ function karte(){
     s += hot(`ort:${id}`, `<rect x="${sx - Math.max(w + 12, 100) / 2}" y="${sy - 30}" width="${Math.max(w + 12, 100)}" height="98" fill="transparent"/><g filter="url(#sh)"><rect x="${sx - w / 2}" y="${sy - 24}" width="${w}" height="44" rx="22" fill="${auf ? "#fff" : "#f1edf6"}"/></g><text x="${sx}" y="${sy + 7}" text-anchor="middle" class="ui" font-size="22" fill="${auf ? "#4b3a6e" : "#a99cc0"}">${t}</text>`);
     if(brief && brief.ort === id && S().gelesen[brief.key]) s += `<g class="ping" pointer-events="none"><circle cx="${sx}" cy="${sy - 50}" r="16" fill="#fff" stroke="#8e5bd6" stroke-width="6"/></g>`;
     if(ng && ng.g.schritte[ng.i].wo === id) s += ausruf(sx + w / 2 + 8, sy - 26);
+    if(window.FREUNDE && AM[id] && S().met[AM[id].id]) s += FREUNDE.herzBild(AM[id].id, sx, sy + 40, .6); // Ticket 38
   }
   s += draussenWetter();
   s += `<text x="800" y="900" text-anchor="middle" class="ui" font-size="28" fill="#5a4a78">Tipp auf einen Ort, Azra läuft hin.</text>`;
@@ -464,6 +471,7 @@ function ort(){
   s += ausgangBild(P) + azraFigur(P, .45);
   if(["garten", "huegel", "see"].includes(V.ort)) s += draussenWetter();
   s += `<text x="840" y="900" text-anchor="middle" class="ui" font-size="30" fill="#5a4a78">${n.ortName}</text>`;
+  if(window.FREUNDE && S().met[n.id]) s += FREUNDE.herzBild(n.id, 840, 945); // Ticket 38
   // Mit offener Arbeitskarte wird das Diorama quer klein und rückt nach links (PLAN: kleines Diorama links, Karte
   // rechts); hochkant liegt die Karte darunter
   if(SP() && SP().offen && innerWidth > innerHeight) s = `<g transform="translate(-100 170) scale(.6)">${s}</g>`;
@@ -476,13 +484,16 @@ function ankommen(id){
   if(!S().met[n.id]){ V.schritt = "hallo"; return say(n.id, n.hallo); }
   V.schritt = "da";
   const sp = SP() && SP().amOrt(id);
-  if(sp && sp.start){ V.msg = null; return sp.start(); }
+  if(sp && sp.start){ V.msg = null; return sp.start(); } // die Stunde geht vor; Herzen und Geschenk beim nächsten Besuch
+  // Ticket 38: ein Besuch füllt die Herzen; ein Geschenk oder die abgegebene Besorgung kommt vor der Geschichte
+  const fr = window.FREUNDE && FREUNDE.ankommen(n.id);
+  if(fr) return say(n.id, fr);
   const h = geschichte(id);
   if(h && h.s.art === "finden") return say("katze", "Schau mal, da liegt etwas!");
   if(h && h.s.art === "rennen") return say(AM[id].id, "Bist du bereit fürs Rennen? Tipp auf mich!");
   if(h) return erzaehlen(h);
   if(sp && sp.offline){ sp.gesagt(); return say(n.id, sp.offline); }
-  say(n.id, sp && sp.frei ? "Tipp auf mich, wenn du mir noch helfen magst." : "Schön, dass du da bist, Azra.");
+  say(n.id, sp && sp.frei ? "Tipp auf mich, wenn du mir noch helfen magst." : (window.FREUNDE && FREUNDE.bitte(n.id)) || "Schön, dass du da bist, Azra.");
 }
 
 // ---------- Katzenwahl am ersten Tag ----------
@@ -548,6 +559,8 @@ const ACT = {
   garten(){ if(window.JAHR && JAHR.oeffnen) JAHR.oeffnen(); },
   katze(){ if(window.KATZE && KATZE.oeffnen) KATZE.oeffnen(); else ACT.hint(); },
   einkaufen(){ if(window.KOCHEN) KOCHEN.laden(); },
+  markt(){ if(!window.FREUNDE) return; if(V.screen !== "karte") return FREUNDE.markt(); geh([8.2, 5.2], () => FREUNDE.markt()); },
+  zettel(){ const z = window.FREUNDE && FREUNDE.offenerZettel(); if(z) say("katze", `Auf dem Zettel steht: ${z}.`); },
   brief(){
     if(!briefDaten()) return say("katze", "Heute ist kein neuer Brief da.");
     ACT.go("brief");
@@ -562,7 +575,7 @@ const ACT = {
   weiter(){ if(SP() && SP().offen) return; const n = AM[V.ort]; if(V.schritt === "hallo"){ V.schritt = "job"; say(n.id, n.job); return; } if(V.schritt === "job" || V.schritt === "zu") return;
     const h = geschichte(V.ort); if(h && h.s.art !== "finden") return erzaehlen(h);
     const sp = SP() && SP().amOrt(V.ort); if(sp && (sp.start || sp.frei)) return (sp.start || sp.frei)();
-    say(n.id, "Schön, dass du da bist, Azra."); },
+    say(n.id, (window.FREUNDE && FREUNDE.bitte(n.id)) || "Schön, dass du da bist, Azra."); },
   ding(){
     const n = AM[V.ort]; if(V.schritt === "hallo") return ACT.weiter();
     if(V.schritt !== "job") return;
@@ -597,7 +610,7 @@ app.addEventListener("click", e => {
 });
 // Pfeiltasten: ein Schritt; gedrückt halten läuft weiter.
 addEventListener("keydown", e => {
-  const d = G.pfeil(e.key), k = d && !app.hidden && ["#eltern", "#buch", "#spiele", "#kochen", "#pflege", "#kiste", "#beet", "#malen", "#puppenhaus"].every(s => document.querySelector(s).hidden) && kontext();
+  const d = G.pfeil(e.key), k = d && !app.hidden && ["#eltern", "#buch", "#spiele", "#kochen", "#pflege", "#kiste", "#beet", "#malen", "#puppenhaus", "#markt"].every(s => document.querySelector(s).hidden) && kontext();
   if(!k || /input|select|textarea/i.test(document.activeElement && document.activeElement.tagName)) return;
   e.preventDefault(); if(geht) return;
   const [x, y] = k.xy(), n = [x + d[0], y + d[1]];

@@ -417,6 +417,103 @@ schritt("m_blitzrechnen", "laden", "hilde", ["blitzrechnen"], "Quick sums: plus 
     "Bei 7 + 8 denke ich: 7 + 7 = 14, und eins mehr ist 15.", "Bist du schneller als der Blitz, bekommst du einen Blitz-Stern."],
   merkheft: "Was ich auswendig weiß, rechne ich blitzschnell; sonst hilft mir eine Nachbaraufgabe." });
 
+// ---------- Welt der Zahl Kap. 5 (Ticket 37): Plus und Minus bis 100, Rechenstrich, Zahlenmauern ----------
+// Ottos Bäckerei (10 Brötchen in einer Tüte), Hilde verkauft, Mila hüpft am Hügel, Lotte baut eine Steinmauer
+// Einer (2 bis 9) zu einer Zahl, die nie auf einem Zehner steht: ohne oder mit Übergang; Stufe 0 bis 49, sonst bis 99
+function zeUndE(rng, s, ueber, minus){
+  for(;;){ const a = zz(rng, minus && ueber ? 21 : 11, s === 0 ? 49 : 99), e = a % 10, b = zz(rng, 2, 9);
+    if(e && (minus ? (ueber ? b > e && a - b >= 10 : b <= e) : (ueber ? e + b >= 11 && a + b <= 100 : e + b <= 9))) return [a, b]; } }
+// Zwei zweistellige Zahlen (27 + 35, 75 − 38), mit oder ohne Übergang bei den Einern
+function zeUndZe(rng, ueber, minus){
+  for(;;){ const a = zz(rng, minus ? 31 : 12, minus ? 99 : 88), b = zz(rng, 11, minus ? a - 1 : 100 - a), e = a % 10, f = b % 10;
+    if(!e || !f || b < 11) continue;
+    if(minus ? (ueber ? f > e : f <= e) && a - b >= 1 : (ueber ? e + f >= 11 : e + f <= 9) && a + b <= 100) return [a, b]; } }
+// Hilfsaufgabe: +9 = +10 − 1, −19 = −20 + 1
+function hilfsaufgabe(a, b, minus){ const n = b + 1, z = minus ? "−" : "+", r = minus ? "+" : "−", m = minus ? a - n : a + n;
+  return [`Rechne erst mit ${n} statt mit ${b}.`, [`${a} ${z} ${n} ${r} 1`, "So rechne ich mit der Hilfsaufgabe."], [`${a} ${z} ${n} = ${m}, ${m} ${r} 1 = ?`, "Rechne du den letzten Schritt."]]; }
+const BROETCHEN = (a, b) => `In der Tüte sind ${a} Brötchen. Ich lege noch ${b} dazu. Wie viele sind es jetzt?`;
+const VERKAUF = (a, b, N) => `Ich habe ${a} ${N}. ${b} verkaufe ich. Wie viele sind noch da?`;
+
+schritt("m_pm_analog", "cafe", "otto", ["rechenstrich", "ergaenzen"], "Analogous sums to 100: 3 + 4 → 23 + 4, 34 + 20",
+  "Du weißt schon: 3 + 4 = 7. Wie viel ist dann 23 + 4?", {
+  gen(rng, s){ const minus = s > 0 && ja(rng);
+    if(s !== 1 && (s === 0 || ja(rng))){ for(;;){ const a = zz(rng, minus ? 31 : 11, minus ? 99 : 79), b = 10 * zz(rng, 1, minus ? Math.floor(a / 10) - 1 : Math.floor((99 - a) / 10));
+        if(a % 10 && b >= 10) return { art: "rechenstrich", item: minus ? { a, b, minus, bitte: `Auf dem Blech liegen ${a} Brezeln. ${b} verkaufe ich. Wie viele sind noch da? Spring in Zehnern rückwärts.` }
+          : { a, b, bitte: `Auf dem Blech liegen ${a} Brezeln. Ich backe noch ${b} dazu. Wie viele sind es jetzt? Spring in Zehnern.` } }; } }
+    const [a, b] = zeUndE(rng, 1, false, minus), e = a % 10, z = minus ? "−" : "+";
+    return { art: "ergaenzen", item: { a, b, ...(minus ? { op: "-" } : {}), bitte: `Du weißt schon: ${e} ${z} ${b} = ${minus ? e - b : e + b}. Wie viel ist dann ${a} ${z} ${b}?` } }; },
+  zeigen: ["3 + 4 = 7, das weißt du schon.", "Bei 23 + 4 rechne ich genauso, die 2 Zehner bleiben.", "Also ist 23 + 4 = 27.",
+    "Bei 34 + 20 rechne ich 3 Zehner und 2 Zehner, das sind 5 Zehner.", "Also ist 34 + 20 = 54."],
+  merkheft: "Die kleine Aufgabe hilft: 3 + 4 = 7, also 23 + 4 = 27." });
+
+schritt("m_plus_ze_e", "cafe", "otto", ["rechenstrich", "ergaenzen"], "Add ones to a two-digit number, no crossing (42 + 5)",
+  "In der Tüte sind 42 Brötchen. Ich lege noch 5 dazu. Wie viele sind es jetzt?", {
+  gen(rng, s){ const [a, b] = zeUndE(rng, s, false, false);
+    return s === 0 ? { art: "rechenstrich", item: { a, b, bitte: BROETCHEN(a, b) + " Spring am Rechenstrich." } } : { art: "ergaenzen", item: { a, b, bitte: BROETCHEN(a, b) } }; },
+  zeigen: ["In der Tüte sind 42 Brötchen, ich lege 5 dazu.", "Die 4 Zehner bleiben, ich rechne nur mit den Einern.", "2 + 5 = 7.", "Also sind es 47 Brötchen."],
+  merkheft: "Ohne Zehnerübergang rechne ich nur mit den Einern, die Zehner bleiben." });
+
+schritt("m_plus_ze_e_ue", "cafe", "otto", ["rechenstrich", "ergaenzen"], "Add ones across the ten (47 + 5 = 47 + 3 + 2)",
+  "In der Tüte sind 47 Brötchen. Ich lege noch 5 dazu. Wie viele sind es jetzt?", {
+  gen(rng, s){ const [a, b] = zeUndE(rng, s, true, false);
+    return s === 0 ? { art: "rechenstrich", item: { a, b, bitte: BROETCHEN(a, b) + " Spring erst bis zum Zehner." } } : { art: "ergaenzen", item: { a, b, bitte: BROETCHEN(a, b) } }; },
+  zeigen: ["Bei 47 + 5 wird die Tüte voll.", "Ich rechne erst bis zum Zehner: 47 + 3 = 50.", "Dann rechne ich den Rest: 50 + 2 = 52.", "Also ist 47 + 5 = 52."],
+  merkheft: "Über den Zehner rechne ich erst bis zum Zehner und dann weiter." });
+
+schritt("m_ergaenzen_zehner", "cafe", "otto", ["ergaenzen"], "Fill up to the next ten and to 100",
+  "In der Tüte sind 46 Brötchen. Wie viele fehlen, bis es 50 sind?", {
+  gen(rng, s){ let a; do a = zz(rng, 11, s === 2 ? 89 : 79); while(!(a % 10));
+    const t = s === 2 ? 100 : Math.ceil(a / 10) * 10 + (s === 1 ? 10 * zz(rng, 1, 2) : 0);
+    const bitte = t === 100 ? `Für das Fest brauche ich 100 Brötchen. ${a} habe ich schon. Wie viele fehlen noch?` : `In der Tüte sind ${a} Brötchen. Wie viele fehlen, bis es ${t} sind?`;
+    return { art: "ergaenzen", item: { a, t, einheit: "Brötchen", bitte } }; },
+  zeigen: ["Ich habe 46 Brötchen und möchte 50.", "Von 46 bis 50 springe ich 4 weiter.", "Bei 73 bis 100 springe ich erst bis 80.", "Das sind 7, und dann noch 20 bis 100.", "Zusammen fehlen 27."],
+  merkheft: "Beim Ergänzen springe ich erst bis zum nächsten Zehner." });
+
+schritt("m_rechenstrich_plus", "huegel", "mila", ["rechenstrich", "ergaenzen"], "Plus on the Rechenstrich; clever sums (+9 = +10 − 1)",
+  "Ich bin bei Stein 27 und hüpfe 35 Steine weiter. Spring am Rechenstrich.", {
+  gen(rng, s){
+    if(s > 0 && ja(rng, s === 1 ? .3 : .5)){ const b = eins(rng, [9, 19, 29]), a = zz(rng, 12, 100 - b - 1);
+      return { art: "ergaenzen", item: { a, b, hilfe: hilfsaufgabe(a, b, false), lob: "Du hast mit der Hilfsaufgabe gerechnet.", bitte: `Ich bin bei Stein ${a} und hüpfe ${b} Steine weiter. Bei welchem Stein lande ich?` } }; }
+    const [a, b] = zeUndZe(rng, s > 0, false);
+    return { art: "rechenstrich", item: { a, b, bitte: `Ich bin bei Stein ${a} und hüpfe ${b} Steine weiter. Spring am Rechenstrich.` } }; },
+  zeigen: ["Bei 27 + 35 springe ich am Rechenstrich.", "Erst springe ich 30 weiter bis 57.", "Dann springe ich noch 5 bis 62.", "Bei 36 + 9 springe ich 10 weiter und einen zurück.", "Das ist leichter: 46 − 1 = 45."],
+  merkheft: "Plus 9 rechne ich als plus 10 und dann minus 1." });
+
+schritt("m_minus_ze_e", "laden", "hilde", ["rechenstrich", "ergaenzen"], "Subtract ones, no crossing (47 − 5)",
+  "Ich habe 47 Äpfel. 5 verkaufe ich. Wie viele sind noch da?", {
+  gen(rng, s){ const [a, b] = zeUndE(rng, s, false, true), N = eins(rng, VORRAT);
+    return s === 0 ? { art: "rechenstrich", item: { a, b, minus: true, bitte: VERKAUF(a, b, N) + " Spring rückwärts." } } : { art: "ergaenzen", item: { a, b, op: "-", bitte: VERKAUF(a, b, N) } }; },
+  zeigen: ["Ich habe 47 Äpfel und verkaufe 5.", "Die 4 Zehner bleiben, ich rechne nur mit den Einern.", "7 − 5 = 2.", "Also sind noch 42 Äpfel da."],
+  merkheft: "Ohne Zehnerübergang nehme ich nur bei den Einern weg, die Zehner bleiben." });
+
+schritt("m_minus_ze_e_ue", "laden", "hilde", ["rechenstrich", "ergaenzen"], "Subtract ones across the ten (43 − 5 = 43 − 3 − 2)",
+  "Ich habe 43 Äpfel. 5 verkaufe ich. Wie viele sind noch da?", {
+  gen(rng, s){ const [a, b] = zeUndE(rng, s, true, true), N = eins(rng, VORRAT);
+    return s === 0 ? { art: "rechenstrich", item: { a, b, minus: true, bitte: VERKAUF(a, b, N) + " Spring erst rückwärts bis zum Zehner." } } : { art: "ergaenzen", item: { a, b, op: "-", bitte: VERKAUF(a, b, N) } }; },
+  zeigen: ["Ich habe 43 Äpfel und verkaufe 5.", "Erst nehme ich 3 weg, dann bin ich bei 40.", "Dann nehme ich noch 2 weg.", "Also sind noch 38 Äpfel da."],
+  merkheft: "Über den Zehner rechne ich erst zurück bis zum Zehner und dann weiter." });
+
+schritt("m_rechenstrich_minus", "huegel", "mila", ["rechenstrich", "ergaenzen"], "Minus on the Rechenstrich; clever sums (−9 = −10 + 1)",
+  "Ich bin bei Stein 75 und gehe 38 Steine den Hügel hinunter. Spring am Rechenstrich rückwärts.", {
+  gen(rng, s){
+    if(s > 0 && ja(rng, s === 1 ? .3 : .5)){ const b = eins(rng, [9, 19, 29]), a = zz(rng, b + 12, 99);
+      return { art: "ergaenzen", item: { a, b, op: "-", hilfe: hilfsaufgabe(a, b, true), lob: "Du hast mit der Hilfsaufgabe gerechnet.", bitte: `Ich bin bei Stein ${a} und gehe ${b} Steine hinunter. Bei welchem Stein komme ich an?` } }; }
+    const [a, b] = zeUndZe(rng, s > 0, true);
+    return { art: "rechenstrich", item: { a, b, minus: true, bitte: `Ich bin bei Stein ${a} und gehe ${b} Steine den Hügel hinunter. Spring am Rechenstrich rückwärts.` } }; },
+  zeigen: ["Bei 75 − 38 springe ich rückwärts.", "Erst springe ich 30 zurück bis 45.", "Dann springe ich noch 8 zurück bis 37.", "Bei 62 − 9 springe ich 10 zurück und einen vor.", "Das ist leichter: 52 + 1 = 53."],
+  merkheft: "Minus 9 rechne ich als minus 10 und dann plus 1." });
+
+// Steinmauer: oben höchstens 100; ab Stufe 1 fehlen auch Grundsteine, alle Lücken bleiben lösbar
+const MAUER_LUECKEN = [[["m0", "m1", "t0"]], [["b1", "m1"], ["b0", "m1", "t0"], ["b2", "m0", "t0"]], [["b0", "b2", "m1"], ["b1", "b2", "t0"]]];
+schritt("m_mauer_100", "garten", "lotte", ["zahlenmauer"], "Number walls to 100, also backwards",
+  "Ich baue eine Steinmauer. Jeder Stein ist so viel wie die zwei Steine darunter zusammen. Füllst du die leeren Steine?", {
+  gen(rng, s){ let b; do b = [0, 1, 2].map(() => s === 0 ? zz(rng, 3, 25) : zz(rng, 5, 35)); while(b[0] + 2 * b[1] + b[2] > 100);
+    const bitte = s === 0 ? "Ich baue eine Steinmauer. Jeder Stein ist so viel wie die zwei Steine darunter zusammen. Füllst du die leeren Steine?"
+      : "In meiner Steinmauer fehlen auch unten Steine. Jeder Stein ist so viel wie die zwei darunter zusammen. Rechne auch rückwärts.";
+    return { art: "zahlenmauer", item: { b, hide: eins(rng, MAUER_LUECKEN[s]), bitte } }; },
+  zeigen: ["Jeder Stein ist so viel wie die zwei Steine darunter.", "Unten stehen 12 und 15, darüber steht 27.", "Fehlt unten ein Stein, rechne ich rückwärts.", "Oben 60, links 25: 60 − 25 = 35."],
+  merkheft: "In der Zahlenmauer rechne ich nach oben plus und nach unten minus." });
+
 // ---------- Geld (Ticket 33, Welt der Zahl Kap. 6): Münzen und Scheine bis 50 €, gemischte Schreibweise wie in der Schule ----------
 const betrag = c => c < 100 ? c + " ct" : c % 100 ? `${Math.floor(c / 100)} € ${c % 100} ct` : c / 100 + " €";
 const GELD = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000];
@@ -1031,13 +1128,149 @@ const AUS_D = [["🐶", "Hun", "Hun", "de"], ["🧒", "Kin", "Kin", "der"], ["�
 const AUS_D2 = [["🌲", "Wal", "Wäl", "der"], ["🚲", "Ra", "Rä", "der"], ["💶", "Gel", "Gel", "der"], ["🎵", "Lie", "Lie", "der"]];
 const AUS_T = [["🍞", "Bro", "Bro", "te"], ["⛺", "Zel", "Zel", "te"], ["🐦", "Nes", "Nes", "ter"], ["💡", "Lich", "Lich", "ter"], ["🛏️", "Bet", "Bet", "ten"]];
 const AUS_T2 = [["🎩", "Hu", "Hü", "te"], ["🍃", "Blat", "Blät", "ter"], ["📝", "Wor", "Wör", "ter"]];
-function auslautItem(x, ans){ const [pic, pre, l0, l1] = x, anders = ans === "d" ? "t" : "d";
-  return { art: "weiterschwingen", item: { pic, pre, ans, tiles: ["d", "t"], long: [l0, l1], alt: { [anders]: `${l0}-${l1.replace(ans, anders)}` }, bitte: `Welcher Buchstabe fehlt am Ende von ${pre}_?` } }; }
+// Ticket 37: auch b/p und g/k
+const PAAR = { d: ["d", "t"], t: ["d", "t"], b: ["b", "p"], p: ["b", "p"], g: ["g", "k"], k: ["g", "k"] };
+function auslautItem(x, ans){ const [pic, pre, l0, l1] = x, tiles = PAAR[ans], anders = tiles.find(t => t !== ans);
+  return { art: "weiterschwingen", item: { pic, pre, ans, tiles, long: [l0, l1], alt: { [anders]: `${l0}-${l1.replace(ans, anders)}` }, bitte: `Welcher Buchstabe fehlt am Ende von ${pre}_?` } }; }
 schritt("d_auslaut_td", "post", "emil", ["weiterschwingen"], "End sound d or t: make the word longer (Hund – Hunde)",
   "Welcher Buchstabe fehlt am Ende von Hun_?", {
   gen(rng, s){ const d = ja(rng, s === 0 ? .65 : .5), liste = d ? (s === 2 ? [...AUS_D, ...AUS_D2] : AUS_D) : (s === 2 ? [...AUS_T, ...AUS_T2] : AUS_T); return auslautItem(eins(rng, liste), d ? "d" : "t"); },
   zeigen: ["Am Ende von Hund hört man ein t.", "Ich verlängere das Wort: zwei Hun – de.", "Jetzt höre ich deutlich ein d.", "Darum schreibe ich Hund mit d."],
   merkheft: "Bei d oder t am Ende verlängere ich das Wort und höre genau hin." });
+
+// ---------- Karibu Kap. 5 (Ticket 37) ----------
+// b/p und g/k am Ende: [Bild, Wort ohne letzten Buchstaben, verlängert: erste Silbe, zweite Silbe]
+const AUS_B = [["🧺", "Kor", "Kör", "be"], ["🐮", "Kal", "Käl", "ber"], ["🦹", "Die", "Die", "be"], ["🪄", "Sta", "Stä", "be"]];
+const AUS_G = [["⛰️", "Ber", "Ber", "ge"], ["🚂", "Zu", "Zü", "ge"], ["🛤️", "We", "We", "ge"], ["📅", "Ta", "Ta", "ge"], ["✈️", "Flu", "Flü", "ge"], ["🏰", "Bur", "Bur", "gen"]];
+const AUS_K = [["🪑", "Ban", "Bän", "ke"], ["🗄️", "Schran", "Schrän", "ke"], ["🐦", "Fin", "Fin", "ken"], ["🎁", "Geschen", "Geschen", "ke"]];
+schritt("d_weiterschwingen", "post", "emil", ["weiterschwingen"], "End sounds b/p and g/k: make the word longer (Korb – Körbe)",
+  "Welcher Buchstabe fehlt am Ende von Kor_?", {
+  // halb weich (b, g, d), halb hart (k, t), damit nie „immer b“ reicht; d erst auf Stufe 2
+  gen(rng, s){ const weich = [...AUS_B.map(x => [x, "b"]), ...AUS_G.map(x => [x, "g"]), ...(s === 2 ? [...AUS_D, ...AUS_D2].map(x => [x, "d"]) : [])];
+    const hart = [...AUS_K.map(x => [x, "k"]), ...(s === 2 ? [...AUS_T, ...AUS_T2] : AUS_T).map(x => [x, "t"])];
+    const [x, ans] = eins(rng, ja(rng) ? weich : hart); return auslautItem(x, ans); },
+  zeigen: ["Am Ende von Korb hört man ein p.", "Ich verlängere das Wort: viele Kör – be.", "Jetzt höre ich deutlich ein b.", "Darum schreibe ich Korb mit b.", "Genauso geht es bei Berg und Ber – ge."],
+  merkheft: "Bei b oder p, g oder k am Ende schwinge ich das Wort weiter." });
+
+// Artikel: Hildes Schilder. [Bild, Nomen]; Tipp unter dem Bild: dieser/diese/dieses …, bei ein/eine der bestimmte Artikel
+const ARTIKEL = {
+  der: [["🐶", "Hund"], ["⚽", "Ball"], ["🍎", "Apfel"], ["🌳", "Baum"], ["🪑", "Stuhl"], ["🐟", "Fisch"], ["🌙", "Mond"], ["👟", "Schuh"], ["🧀", "Käse"], ["🦔", "Igel"], ["🎩", "Hut"], ["🥄", "Löffel"]],
+  die: [["🐱", "Katze"], ["🐭", "Maus"], ["🌸", "Blume"], ["🍌", "Banane"], ["☕", "Tasse"], ["☀️", "Sonne"], ["🦆", "Ente"], ["🕯️", "Kerze"], ["⏰", "Uhr"], ["👓", "Brille"], ["✂️", "Schere"], ["🧦", "Socke"]],
+  das: [["🏠", "Haus"], ["📖", "Buch"], ["🚗", "Auto"], ["🐑", "Schaf"], ["🥚", "Ei"], ["🛏️", "Bett"], ["🍞", "Brot"], ["🍦", "Eis"], ["🐴", "Pferd"], ["🐷", "Schwein"], ["❤️", "Herz"], ["🚲", "Fahrrad"]] };
+const DIESER = { der: "dieser", die: "diese", das: "dieses" };
+const ART_KOERBE = { der: ["🔵 der", "In den blauen Korb kommen Wörter wie der Hund."], die: ["🔴 die", "In den roten Korb kommen Wörter wie die Katze."], das: ["🟢 das", "In den grünen Korb kommen Wörter wie das Haus."] };
+const EIN_KOERBE = { ein: ["ein", "Zu der und das sagt man ein: ein Hund, ein Haus."], eine: ["eine", "Zu die sagt man eine: eine Katze."] };
+schritt("d_artikel", "laden", "hilde", ["muell"], "Articles: der, die, das and ein, eine",
+  "Ich schreibe neue Schilder für meinen Laden. Kommt das Wort zu der, die oder das?", {
+  gen(rng, s){ const A = ["der", "die", "das"], ein = s === 2 && ja(rng), t = A.map(a => [...eins(rng, ARTIKEL[a]), a]);
+    while(t.length < 4 + s){ const a = eins(rng, A), x = eins(rng, ARTIKEL[a]); if(!t.some(d => d[1] === x[1])) t.push([...x, a]); }
+    const karten = misch(rng, t).map(([e, w, a]) => ein ? [e, w, a === "die" ? "eine" : "ein", `${a} ${w}`] : [e, w, a, `${DIESER[a]} ${w}`]);
+    return { art: "muell", item: { t: karten, koerbe: ein ? EIN_KOERBE : ART_KOERBE, lob: "Du hast bei jedem Wort den Artikel ausprobiert.", dank: "Danke! Jetzt hat jedes Schild den richtigen Artikel.",
+      h1: ein ? "Sag das Wort mit ein oder eine davor. Was klingt richtig?" : "Sag das Wort mit der, die oder das davor. Was klingt richtig?",
+      bitte: ein ? "Auf meinen Preisschildern steht ein oder eine. Was passt zu welchem Wort?" : "Ich schreibe neue Schilder für meinen Laden. Kommt das Wort zu der, die oder das?" } }; },
+  zeigen: ["Vor einem Nomen steht oft ein Artikel.", "Es heißt der Hund, die Katze und das Haus.", "Statt der und das sagt man auch ein: ein Hund, ein Haus.", "Statt die sagt man eine: eine Katze."],
+  merkheft: "Die Artikel heißen der, die, das und ein, eine." });
+
+// Groß oder klein: Satzanfang und Nomen; Artikel jedes Nomens für die Probe
+const NOMEN_ART = { Katze: "die", Hund: "der", Kind: "das", Sonne: "die", Ball: "der", Auto: "das", Ente: "die", Igel: "der", Sofa: "das", Apfel: "der", See: "der",
+  Oma: "die", Kuchen: "der", Vogel: "der", Baum: "der", Maus: "die", Käse: "der", Weg: "der", Garten: "der", Winter: "der", Laub: "das", Blume: "die", Vase: "die",
+  Abend: "der", Buch: "das", Futter: "das" };
+const GROSS_SAETZE = [["Die Katze schläft.", "Der Hund bellt.", "Das Kind lacht.", "Die Sonne scheint.", "Der Ball rollt.", "Das Auto hupt.", "Die Ente schwimmt.", "Der Igel schnauft."],
+  ["Die Katze schläft auf dem Sofa.", "Der Hund spielt mit dem Ball.", "Das Kind isst einen Apfel.", "Die Ente schwimmt auf dem See.", "Die Oma backt einen Kuchen.",
+    "Der Vogel sitzt auf dem Baum.", "Die Maus frisst den Käse.", "Der Igel läuft über den Weg."],
+  ["Die kleine Katze schläft auf dem Sofa.", "Heute spielt der Hund im Garten.", "Der große Hund holt den roten Ball.", "Morgen backt die Oma einen Kuchen.",
+    "Im Winter schläft der Igel unter dem Laub.", "Die bunte Blume steht in der Vase.", "Am Abend liest das Kind ein Buch.", "Der Igel sucht im Laub nach Futter."]];
+schritt("d_nomen_gross", "huegel", "mila", ["gross"], "Capital letters: nouns (article test) and sentence start",
+  "Ich habe ein Schild für den Hügelweg geschrieben, aber ganz klein. Tipp die Wörter an, die groß werden.", {
+  gen(rng, s){ const ws = eins(rng, GROSS_SAETZE[s]).split(" "), g = [], p = {};
+    ws.forEach((w, i) => { const n = w.replace(/[.,!?]/g, ""); if(/^[A-ZÄÖÜ]/.test(w)){ g.push(i); if(i > 0) p[i] = `${NOMEN_ART[n]} ${n}`; } });
+    return { art: "gross", item: { w: ws.map(w => w.toLowerCase()), g, p, bitte: "Ich habe ein Schild für den Hügelweg geschrieben, aber ganz klein. Tipp die Wörter an, die groß werden." } }; },
+  zeigen: ["Am Satzanfang schreibe ich immer groß.", "Nomen schreibe ich auch groß, das zeigt die Artikelprobe.",
+    "Passt der, die oder das davor, ist es ein Nomen: die Katze.", "Auch die Mehrzahl hilft: die Katze, die Katzen.", "Bei schläft passt kein Artikel, also bleibt es klein."],
+  merkheft: "Satzanfänge und Nomen schreibe ich groß, die Artikelprobe hilft mir." });
+
+// Einladung (Ottos Café): wer, was, wann, wo; Briefe, in denen eins fehlt; Entschuldigungen
+const EINL_KOERBE = { wer: ["👤 Wer?", "In diesen Korb kommt, wer einlädt oder wer eingeladen ist."], was: ["🎉 Was?", "In diesen Korb kommt, was gefeiert wird."],
+  wann: ["🕒 Wann?", "In diesen Korb kommen der Tag und die Uhrzeit."], wo: ["📍 Wo?", "In diesen Korb kommt der Ort."] };
+const EINL_TEILE = { wer: [["💌", "Liebe Azra,", "ein Name"], ["👵", "Liebe Oma,", "ein Name"], ["✍️", "Dein Otto", "ein Name"], ["🐾", "Deine Lotte", "ein Name"]],
+  was: [["🎂", "zu meinem Geburtstag", "ein Fest"], ["🎉", "zum Pensionsfest", "ein Fest"], ["🍰", "zum Kuchenessen", "ein Fest"], ["🏮", "zum Laternenfest", "ein Fest"]],
+  wann: [["📅", "am Samstag", "ein Tag"], ["🕒", "um 15 Uhr", "eine Uhrzeit"], ["📅", "am 12. Dezember", "ein Tag"], ["🕓", "um 4 Uhr", "eine Uhrzeit"]],
+  wo: [["☕", "im Café", "ein Ort"], ["🌳", "im Westpark", "ein Ort"], ["🏡", "bei Lotte im Garten", "ein Ort"], ["🏠", "in der Tierpension", "ein Ort"]] };
+const FEST_WAS = ["zu meinem Geburtstag", "zum Pensionsfest", "zum Kuchenessen", "zum Laternenfest"];
+const FEST_WANN = ["am Samstag um 15 Uhr", "am Sonntag um 4 Uhr", "am 12. Dezember um 3 Uhr", "am Freitag um 5 Uhr"];
+const FEST_WO = ["im Café", "im Westpark", "bei Lotte im Garten", "in der Tierpension"];
+const W_FRAGE = { was: "was gefeiert wird", wann: "wann das Fest ist", wo: "wo das Fest ist" };
+// Ottos Brief, in dem eine der drei Angaben fehlt: {text, fehlt, da: die übrigen Angaben}
+function festBrief(rng){ const fehlt = eins(rng, ["was", "wann", "wo"]), w = { was: eins(rng, FEST_WAS), wann: eins(rng, FEST_WANN), wo: eins(rng, FEST_WO) };
+  const text = ["Liebe Azra,", fehlt === "was" ? "ich lade dich ein." : `ich lade dich ${w.was} ein.`, ...(fehlt === "wann" ? [] : [`Wir feiern ${w.wann}.`]),
+    ...(fehlt === "wo" ? [] : [`Das Fest ist ${w.wo}.`]), "Dein Otto"];
+  return { text, fehlt, w }; }
+const ENTSCHULDIGT = [["Lotte", "Deine Lotte", "Ich bin krank.", "sie"], ["Emil", "Dein Emil", "Wir fahren zu meiner Oma.", "er"], ["Mila", "Deine Mila", "Ich habe Schnupfen.", "sie"]];
+schritt("d_einladung", "cafe", "otto", ["muell", "textfrage"], "Write an invitation and an apology (who, what, when, where)",
+  "Ich schreibe Einladungen für mein Fest. Hilfst du mir? Was gehört zu Wer, Was, Wann und Wo?", {
+  gen(rng, s){
+    if(s === 0 || (s === 1 && ja(rng))){ const K = ["wer", "was", "wann", "wo"], t = K.map(k => [...eins(rng, EINL_TEILE[k]).slice(0, 2), k]);
+      while(t.length < 4 + s){ const k = eins(rng, K), x = eins(rng, EINL_TEILE[k]); if(!t.some(d => d[1] === x[1])) t.push([...x.slice(0, 2), k]); }
+      const karten = misch(rng, t).map(([e, n, k]) => [e, n, k, EINL_TEILE[k].find(x => x[1] === n)[2]]);
+      return { art: "muell", item: { t: karten, koerbe: EINL_KOERBE, h1: "Frag dich bei jeder Karte: Ist das ein Name, ein Fest, eine Zeit oder ein Ort?",
+        lob: "Du hast an Wer, Was, Wann und Wo gedacht.", dank: "Danke! Jetzt weiß ich, was in meine Einladung gehört.",
+        bitte: "Ich schreibe Einladungen für mein Fest. Hilfst du mir? Was gehört zu Wer, Was, Wann und Wo?" } }; }
+    if(s === 2 && ja(rng)){ const [wer, gruss, grund, er] = eins(rng, ENTSCHULDIGT), o = misch(rng, [0, 1, 2, 3]);
+      const O = ["Es tut mir leid, dass ich nicht zu deinem Fest kommen kann.", grund, "Liebe Azra,", gruss], W = ["", `Damit sagt ${wer}, warum ${er} nicht kommen kann.`, "So fängt der Brief an.", "So hört der Brief auf."];
+      return { art: "textfrage", item: { text: ["Liebe Azra,", "es tut mir leid, dass ich nicht zu deinem Fest kommen kann.", grund, gruss], q: `Mit welchem Satz entschuldigt sich ${wer}?`,
+        o: o.map(i => O[i]), a: o.indexOf(0), warum: o.map(i => W[i]), s: 0, lob: "Du hast die Entschuldigung gefunden.",
+        hilfe: ["Eine Entschuldigung sagt, dass es einem leidtut.", "Hier fängt der Brief an, lies Satz für Satz weiter.", "Hör gut zu und lies dann den nächsten Satz genau."], bitte: `Lies den Brief von ${wer}. Mit welchem Satz entschuldigt ${er} sich?` } }; }
+    const b = festBrief(rng), K = ["wann", "wo", "was", "wer"], o = misch(rng, K);
+    const W = { wann: `Wann das Fest ist, steht schon da: ${b.w.wann}.`, wo: `Wo das Fest ist, steht schon da: ${b.w.wo}.`, was: "Was gefeiert wird, steht schon da.", wer: "Wer einlädt, steht schon da: Otto." };
+    return { art: "textfrage", item: { text: b.text, q: "Was fehlt noch in Ottos Einladung?", o: o.map(k => k === "wer" ? "wer einlädt" : W_FRAGE[k]), a: o.indexOf(b.fehlt),
+      warum: o.map(k => k === b.fehlt ? "" : W[k]), s: 1, lob: "Du hast an Wer, Was, Wann und Wo gedacht.",
+      hilfe: ["Frag dich: Wer, was, wann und wo?", "Lies Zeile für Zeile.", "Drei Fragen haben eine Antwort im Brief, eine noch nicht."], bitte: "Lies Ottos Einladung. Was fehlt noch?" } }; },
+  zeigen: ["In eine Einladung gehören vier Fragen.", "Wer lädt ein, und was wird gefeiert?", "Wann ist das Fest, und wo ist es?", "Vorne steht die Anrede, hinten der Gruß.",
+    "Kann man nicht kommen, schreibt man: Es tut mir leid."],
+  merkheft: "Meine Einladung sagt, wer einlädt, was gefeiert wird, wann und wo." });
+
+// Rückmeldung (Ottos Café): Lob oder Tipp, der Tipp, der hilft, das Lob, das passt
+const LOB = ["Mir gefällt, dass du die Uhrzeit geschrieben hast.", "Dein Bild ist schön bunt.", "Toll, dass du an den Gruß gedacht hast.", "Deine Schrift ist gut zu lesen."];
+const TIPP = ["Es fehlt noch, wo das Fest ist.", "Schreib noch dazu, wann das Fest anfängt.", "Am Satzanfang fehlt ein großer Buchstabe.", "Schreib noch, was es zu essen gibt."];
+schritt("d_ueberarbeiten_rueckmeldung", "cafe", "otto", ["stimmt", "textfrage"], "Give and use feedback on a text",
+  "Ich habe meine Einladung geschrieben. Gibst du mir eine Rückmeldung?", {
+  gen(rng, s){
+    if(s === 0){ const lob = ja(rng), satz = eins(rng, lob ? LOB : TIPP), sagt = ja(rng), typ = x => x ? "Lob" : "Tipp", erkl = x => x ? "es sagt, was gut gelungen ist" : "es sagt, was man noch besser machen kann";
+      return { art: "stimmt", item: { s: `„${satz}“ Das ist ein ${typ(sagt)}.`, a: sagt === lob, f: sagt === lob ? `Doch: Das ist ein ${typ(lob)}, ${erkl(lob)}.` : `Das ist ein ${typ(lob)}, ${erkl(lob)}.`,
+        bitte: "Otto bekommt Rückmeldungen zu seiner Einladung. Ist das ein Lob oder ein Tipp? Stimmt das?" } }; }
+    const b = festBrief(rng), da = ["was", "wann", "wo"].filter(k => k !== b.fehlt);
+    if(s === 1 || ja(rng)){ const O = [`Schreib noch dazu, ${W_FRAGE[b.fehlt]}.`, "Mir gefällt deine Einladung.", "Schreib die Einladung noch einmal ab.", "Mal noch ein Bild dazu."],
+        W = ["", "Das ist ein Lob, aber kein Tipp.", "Dann fehlt immer noch etwas.", "Ein Bild ist schön, aber es fehlt noch etwas."], o = misch(rng, [0, 1, 2, 3]);
+      return { art: "textfrage", item: { text: b.text, q: "Welcher Tipp hilft Otto am meisten?", o: o.map(i => O[i]), a: o.indexOf(0), warum: o.map(i => W[i]), s: 1,
+        lob: "Dein Tipp sagt genau, was fehlt.", hilfe: ["Ein guter Tipp sagt genau, was noch fehlt.", "Lies Zeile für Zeile: Wer, was, wann, wo?", "Eine Frage hat noch keine Antwort im Brief."],
+        bitte: "Lies Ottos Einladung. Welcher Tipp hilft Otto am meisten?" } }; }
+    const gut = eins(rng, da), O = [`Mir gefällt, dass du schreibst, ${W_FRAGE[gut]}.`, `Mir gefällt, dass du schreibst, ${W_FRAGE[b.fehlt]}.`, "Mir gefällt, dass du ein Bild gemalt hast."],
+      W = ["", "Das steht noch gar nicht in der Einladung.", "In der Einladung ist kein Bild."], o = misch(rng, [0, 1, 2]);
+    return { art: "textfrage", item: { text: b.text, q: "Welches Lob passt zu Ottos Einladung?", o: o.map(i => O[i]), a: o.indexOf(0), warum: o.map(i => W[i]), s: 1,
+      lob: "Dein Lob passt genau zur Einladung.", hilfe: ["Ein Lob sagt, was wirklich gut gelungen ist.", "Lies Zeile für Zeile: Was steht schon da?", "Lob nur, was wirklich im Brief steht."],
+      bitte: "Lies Ottos Einladung. Welches Lob passt?" } }; },
+  zeigen: ["Bei einer Rückmeldung sage ich zuerst, was mir gefällt.", "Dann gebe ich einen Tipp, was noch fehlt.", "Ein guter Tipp ist genau: Schreib noch, wann das Fest ist.",
+    "Bekomme ich einen Tipp, verbessere ich meinen Text."],
+  merkheft: "Ich sage erst, was mir gefällt, und dann einen genauen Tipp." });
+
+schritt("d_lesen_vortrag", "see", "fridolin", [], "Read aloud with pauses at punctuation and the right tone",
+  "Liest du Mama einen kurzen Text vor? Mach beim Punkt eine kleine Pause.", {
+  offline: true,
+  zeigen: ["Vorher lese ich den Text einmal leise.", "Beim Punkt mache ich eine kleine Pause.", "Beim Fragezeichen geht meine Stimme nach oben.", "Beim Ausrufezeichen lese ich laut und deutlich."],
+  merkheft: "Beim Vorlesen achte ich auf Punkt, Fragezeichen und Ausrufezeichen." });
+
+schritt("d_va_lineatur", "tagebuch", "katze", [], "Joined handwriting (VA): words and sentences, spaces, smaller lines",
+  "Schreib drei kurze Sätze in Schreibschrift in dein Heft. Lass zwischen den Wörtern einen Finger Platz.", {
+  offline: true,
+  zeigen: ["Ich schreibe die Buchstaben eines Wortes verbunden.", "Zwischen zwei Wörtern lasse ich einen Finger Platz.", "Die kleinen Buchstaben passen genau zwischen die Linien.",
+    "Auch in kleineren Linien schreibe ich ganz ruhig."],
+  merkheft: "Ich schreibe Wörter verbunden und lasse zwischen den Wörtern einen Finger Platz." });
+
+schritt("d_va_lesbar", "tagebuch", "katze", [], "Check her own handwriting for legibility",
+  "Schau dir deine Schrift mit der Lupe an. Ist alles gut zu lesen?", {
+  offline: true,
+  zeigen: ["Ich schaue meine Schrift mit der Lupe an.", "Ist das a oben geschlossen?", "Stehen alle Buchstaben auf der Linie?", "Einen Buchstaben, der noch wackelt, übe ich noch einmal."],
+  merkheft: "Ich prüfe Form, Größe, Abstand und Linie meiner Schrift." });
 
 const VORLAGEN = [["Die Sonne scheint.", "Der Hund bellt.", "Oma backt Kuchen.", "Wir spielen Ball.", "Die Katze schläft.", "Ich mag Äpfel."],
   ["Im Sommer ist es heiß.", "Die Biene fliegt zur Wiese.", "Wir essen heute Suppe.", "Emil bringt die Post.", "Der Igel schläft im Laub.", "Mein Hund heißt Bello."],

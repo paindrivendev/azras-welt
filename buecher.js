@@ -539,7 +539,7 @@ const BUECHER = [
       { text: "„Kein Problem“, sagte das Schwein. „Spring auf meine Nase. Ich trage dich rüber.“", bild: "🐷🥞" },
       { text: "Hopp! Der Kuchen sprang auf die Nase vom Schwein. Das Schwein schwamm los.", bild: "🐷🌊" },
       { text: "In der Mitte vom Bach machte das Schwein das Maul auf. Ganz weit. Und – happs!", bild: "🐷🌊" },
-      { text: "Weg war der Pfannkuchen. Das Schwein schmatzte. „Mmh, lecker!“, sagte es.", bild: "🐷😋" },
+      { text: "Weg war der Pfannkuchen. Das Schwein schmatzte. „Lecker!“, sagte es.", bild: "🐷😋" },
       { text: "Die Mutter, die Kinder und alle Tiere kamen zu spät. Sie hatten immer noch Hunger.", bild: "👩🐔🦆" },
       { text: "Da lachte die Mutter. „Kommt nach Hause“, sagte sie. „Ich backe einen neuen Pfannkuchen. Und diesmal passen wir gut auf!“", bild: "👩🍳🥞" },
     ] },

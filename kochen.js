@@ -1,7 +1,8 @@
 /* Küche (Ticket 22, Rückmeldung der Eltern: "it needs a kitchen … should not focus only learning"). Azra kocht mit ihrer
    Katze nach Rezeptkarten; was fehlt, kauft sie bei Hilde im Laden mit ihrem Geld. Spiel, keine Aufgabe: nichts geht
    schief, nichts verbrennt, nichts verdirbt; am Ende isst die Katze oder ein Nachbar mit ihr.
-   Spielstand in S.kueche = {vorrat: {zutat: Anzahl}, gekocht: {rezept: wie oft}, tisch: {rezept, date} | null}. */
+   Spielstand in S.kueche = {vorrat: {zutat: Anzahl}, gekocht: {rezept: wie oft}, tisch: {rezept, date} | null,
+   rezepte: [Rezepte, die ihr Nachbarn geschenkt haben (Ticket 38)]}. */
 (function(root){
 "use strict";
 // ---------- Regeln (rein, getestet) ----------
@@ -28,7 +29,14 @@ const REZEPTE = [
     { art: "warm", in: "topf", sag: "Schön warm machen." }, { art: "servieren", sag: "Vorsicht, heiß! In die Tasse damit." }] },
   { id: "butterbrot", akk: "das Butterbrot", name: "Butterbrot", zutaten: { brot: 1, butter: 1, kaese: 1 }, schritte: [
     { art: "belegen", auf: "brett", nur: ["brot"], sag: "Leg das Brot aufs Brett." }, { art: "streichen", sag: "Jetzt die Butter drauf streichen." },
-    { art: "belegen", auf: "brot", nur: ["kaese"], sag: "Und eine Scheibe Käse." }, { art: "servieren", sag: "Fertig ist das Butterbrot!" }] }
+    { art: "belegen", auf: "brot", nur: ["kaese"], sag: "Und eine Scheibe Käse." }, { art: "servieren", sag: "Fertig ist das Butterbrot!" }] },
+  // Geschenke der Nachbarn (Ticket 38): erst in der Küche, wenn sie sie bekommen hat
+  { id: "waffeln", akk: "die Waffeln", name: "Waffeln", geschenk: true, zutaten: { mehl: 1, milch: 1, ei: 1, zucker: 1 }, schritte: [
+    { art: "rein", in: "schuessel", sag: "Alles in die Schüssel, wie bei Otto!" }, { art: "ruehren", in: "schuessel", sag: "Rühren, bis der Teig glatt ist." },
+    { art: "warm", in: "pfanne", sag: "Jetzt in die heiße Pfanne. Dreh den Herd an." }, { art: "servieren", sag: "Fertig sind die Waffeln!" }] },
+  { id: "bananenmilch", akk: "die Bananenmilch", name: "Bananenmilch", geschenk: true, zutaten: { milch: 1, banane: 1 }, schritte: [
+    { art: "rein", in: "schuessel", sag: "Milch und Banane in die Schüssel." }, { art: "ruehren", in: "schuessel", sag: "Jetzt kräftig mixen, rund und rund." },
+    { art: "servieren", sag: "Fertig! Ab ins Glas damit." }] }
 ];
 const rezept = id => REZEPTE.find(r => r.id === id) || null;
 // Am ersten Tag ist genug da für Pfannkuchen und ein Butterbrot.
@@ -36,13 +44,16 @@ const START = { mehl: 2, milch: 2, ei: 4, zucker: 1, butter: 1, brot: 2, kaese: 
 const anzahl = n => Number.isInteger(n) && n > 0;
 function norm(k){
   const o = k && typeof k === "object" && !Array.isArray(k) ? k : null;
-  if(!o) return { vorrat: { ...START }, gekocht: {}, tisch: null };
+  if(!o) return { vorrat: { ...START }, gekocht: {}, tisch: null, rezepte: [] };
   const vorrat = {}, gekocht = {};
   for(const [z, n] of Object.entries(o.vorrat && typeof o.vorrat === "object" ? o.vorrat : {})) if(ZUTATEN[z] && anzahl(n)) vorrat[z] = n;
   for(const [r, n] of Object.entries(o.gekocht && typeof o.gekocht === "object" ? o.gekocht : {})) if(rezept(r) && anzahl(n)) gekocht[r] = n;
   const t = o.tisch, tisch = t && typeof t === "object" && rezept(t.rezept) && typeof t.date === "string" ? { rezept: t.rezept, date: t.date } : null;
-  return { vorrat, gekocht, tisch };
+  const rezepte = (Array.isArray(o.rezepte) ? o.rezepte : []).filter((r, i, a) => rezept(r) && rezept(r).geschenk && a.indexOf(r) === i);
+  return { vorrat, gekocht, tisch, rezepte };
 }
+// Was in der Küche steht: alle Rezepte außer den Geschenken, die sie noch nicht hat
+const sichtbar = k => REZEPTE.filter(r => !r.geschenk || (k.rezepte || []).includes(r.id));
 function fehlt(r, vorrat){ const f = {}; for(const [z, n] of Object.entries(r.zutaten)) if((vorrat[z] || 0) < n) f[z] = n - (vorrat[z] || 0); return f; }
 function kochen(r, vorrat){
   if(Object.keys(fehlt(r, vorrat)).length) return null;
@@ -52,8 +63,8 @@ function kaufen(vorrat, purse, z){
   if(!ZUTATEN[z] || purse < ZUTATEN[z].preis) return null;
   return { vorrat: { ...vorrat, [z]: (vorrat[z] || 0) + 1 }, purse: purse - ZUTATEN[z].preis };
 }
-function fertig(k, r, date){ const v = kochen(r, k.vorrat); if(!v) return k; return { vorrat: v, gekocht: { ...k.gekocht, [r.id]: (k.gekocht[r.id] || 0) + 1 }, tisch: { rezept: r.id, date } }; }
-const K = { ZUTATEN, REZEPTE, START, rezept, norm, fehlt, kochen, kaufen, fertig };
+function fertig(k, r, date){ const v = kochen(r, k.vorrat); if(!v) return k; return { ...k, vorrat: v, gekocht: { ...k.gekocht, [r.id]: (k.gekocht[r.id] || 0) + 1 }, tisch: { rezept: r.id, date } }; }
+const K = { ZUTATEN, REZEPTE, START, rezept, norm, sichtbar, fehlt, kochen, kaufen, fertig };
 if(typeof module !== "undefined" && module.exports){ module.exports = K; return; }
 
 // ---------- Bilder ----------
@@ -82,6 +93,10 @@ const GB = {
   kakao: `<ellipse cy="40" rx="70" ry="20" fill="#fff" stroke="#ddd3ec" stroke-width="5"/><path d="M-44,-30 H44 L36,38 Q0,48 -36,38Z" fill="#9b6ad8"/><ellipse cy="-30" rx="44" ry="12" fill="#7a4a2e"/><path d="M44,-14 q30,0 26,22 q-4,16 -30,14" stroke="#9b6ad8" stroke-width="10" fill="none"/><path d="M-12,-50 q-8,-12 0,-24 M10,-50 q-8,-12 0,-24" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity=".8"/>`,
   butterbrot: TELLER + `<path d="M-58,24 Q-64,-26 -30,-30 Q0,-44 30,-30 Q64,-26 58,24Z" fill="#c98f52"/><path d="M-50,18 Q-54,-20 -26,-22 Q0,-34 26,-22 Q54,-20 50,18Z" fill="#fbe58a"/><path d="M-40,14 L40,14 L34,-14 L-36,-18Z" fill="#f6cf4a"/><circle cx="-10" cy="0" r="5" fill="#d9ab22"/><circle cx="16" cy="4" r="4" fill="#d9ab22"/>`
 };
+GB.waffeln = TELLER + [[-34, -2], [30, 4]].map(([x, y]) => `<g transform="translate(${x} ${y}) rotate(-8)"><rect x="-38" y="-30" width="76" height="56" rx="10" fill="#e2a957" stroke="#c4823a" stroke-width="3"/>`
+  + [-19, 0, 19].map(v => `<path d="M${v},-26 V22 M-34,${v * .7} H34" stroke="#c4823a" stroke-width="3"/>`).join("") + `</g>`).join("") + `<circle cx="-10" cy="-30" r="9" fill="#e2453f"/>`;
+GB.bananenmilch = `<ellipse cy="46" rx="56" ry="14" fill="#fff" stroke="#ddd3ec" stroke-width="5"/><path d="M-34,-56 H34 L26,44 H-26Z" fill="#fff6c8" stroke="#ddd3ec" stroke-width="5"/>`
+  + `<path d="M-30,-30 H30 L26,40 H-26Z" fill="#fbe58a"/><path d="M10,-80 L18,-20" stroke="#e5607e" stroke-width="7" stroke-linecap="round"/><path d="M-40,-62 Q-30,-84 -6,-70 Q-24,-60 -40,-62Z" fill="#f6d64a" stroke="#d9b323" stroke-width="3"/>`;
 const gerichtBild = (id, x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">${GB[id]}</g>`;
 
 // ---------- Im Browser ----------
@@ -104,7 +119,7 @@ const zutatenListe = r => { const v = k().vorrat;
 // Rezeptkarten: was gebraucht wird und was schon da ist
 function oeffnen(){
   auf();
-  seite(`<h2 class="ui">Was kochen wir?</h2><div class="rezepte">${REZEPTE.map(r => `<button class="rezept" data-rezept="${r.id}">
+  seite(`<h2 class="ui">Was kochen wir?</h2><div class="rezepte">${sichtbar(k()).map(r => `<button class="rezept" data-rezept="${r.id}">
     <svg viewBox="-110 -80 220 150">${GB[r.id]}</svg><span class="titel">${esc(r.name)}</span><span class="zutaten">${zutatenListe(r)}</span></button>`).join("")}</div>`);
   el("koS").querySelectorAll("[data-rezept]").forEach(b => b.onclick = () => waehlen(rezept(b.dataset.rezept)));
   sag("Was wollen wir heute kochen?");
@@ -205,14 +220,14 @@ function essen(r){
   const gaeste = W.NACHBARN.filter(x => S().met[x.id]);
   seite(`<h2 class="ui">Wer isst mit dir?</h2><div class="gaeste"><button class="gast" data-gast="katze"><svg viewBox="-150 -330 300 340">${root.BILD.figur("katze:" + ((S().katze || {}).farbe || "lila"))}</svg><span>${esc(katze())}</span></button>
     ${gaeste.map(x => `<button class="gast" data-gast="${x.id}"><svg viewBox="-180 -330 360 340">${root.BILD.figur(x.art)}</svg><span>${esc(x.name.split(" ")[0])}</span></button>`).join("")}</div>`);
-  sag("Mmh, das riecht gut! Wer isst mit dir?");
+  sag("Das riecht gut! Wer isst mit dir?");
   el("koS").querySelectorAll("[data-gast]").forEach(b => b.onclick = () => {
     const g = b.dataset.gast, x = W.NACHBARN.find(y => y.id === g);
     seite(`<div class="kochstelle"><svg viewBox="0 0 1000 560"><rect x="160" y="300" width="680" height="40" rx="16" fill="#e0b07a"/><rect x="190" y="340" width="20" height="180" fill="#c98f52"/><rect x="790" y="340" width="20" height="180" fill="#c98f52"/>
       ${gerichtBild(r.id, 380, 270, .9)}${gerichtBild(r.id, 620, 270, .9)}${root.BILD.spr(root.BILD.figur("azra"), 230, 420, .42)}${root.BILD.spr(root.BILD.figur(x ? x.art : "katze:" + ((S().katze || {}).farbe || "lila")), 790, 420, x && x.art === "heron" ? .32 : .4, true)}</svg></div>
       <div class="aufgabe-fuss"><button class="btn" id="koFertig">Fertig</button></div>`);
-    sag(x ? `Mmh, lecker! Danke für ${r.akk}, Azra.` : "Mmh, das schmeckt! Du kochst toll.", x ? x.id : null);
-    root.WELT.klimper();
+    sag(x ? `Lecker! Danke für ${r.akk}, Azra.` : "Das schmeckt! Du kochst toll.", x ? x.id : null);
+    root.WELT.klimper(); if(x && root.FREUNDE) root.FREUNDE.mitgegessen(x.id); // Ticket 38: geteiltes Essen füllt die Herzen
     el("koFertig").onclick = schliessen;
   });
 }
@@ -228,6 +243,7 @@ function laden(gekauft){
     kk.vorrat = n.vorrat; S().purse = n.purse; ST.save(); root.WELT.klimper(); laden(b.dataset.kauf);
   });
   sag(gekauft ? `${ZUTATEN[gekauft].name}, gern! Danke, Azra.` : "Was darf es sein?", "hilde");
+  if(root.FREUNDE) root.FREUNDE.imLaden(el("koS"), t => { lauf = null; laden(); sag(t, "hilde"); }, c => { lauf = c; }); // Besorgung (Ticket 38)
 }
 root.KOCHEN = { ...K, oeffnen, laden, schliessen, gerichtBild, get offen(){ return !box().hidden; }, get lauf(){ return lauf; } };
 })(this);
