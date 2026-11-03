@@ -515,17 +515,18 @@ A.art({ id: "blitzwort", fach: "deutsch", titel: "Blitzwort: lesen und Bild wäh
     { w: "Katze", syl: ["Kat", "ze"], o: [["🐱", "eine Katze"], ["🕯️", "eine Kerze"], ["🐾", "eine Tatze"], ["🧢", "eine Mütze"]] },
     { w: "Schnecke", syl: ["Schne", "cke"], o: [["🐌", "eine Schnecke"], ["❄️", "Schnee"], ["🐍", "eine Schlange"], ["🍫", "Schokolade"]] }],
   mount(st, it, G){ G.say("n", it.bitte || "Gleich blitzt ein Wort auf. Lies es und tipp dann das passende Bild.");
-    st.innerHTML = `<div class="scene"><div class="flash" id="f"></div><div class="opts" id="o" hidden></div><button class="btn ghost" id="again" hidden>👁 Nochmal zeigen</button></div>`;
+    st.innerHTML = `<div class="scene"><div class="flash${it.satz ? " satz" : ""}" id="f"></div><div class="opts${it.satz ? " zwei" : ""}" id="o" hidden></div><button class="btn ghost" id="again" hidden>👁 Nochmal zeigen</button></div>`;
     const f = G.$("#f"), o = G.$("#o"), again = G.$("#again");
-    const flash = G.ref.flash = async (ms, syl) => { f.innerHTML = syl ? it.syl.map((s, i) => `<span class="ltr c${i % 2}">${s}</span>`).join("") : it.w; await sleep(ms);
+    const flash = G.ref.flash = async (ms, syl) => { f.innerHTML = syl ? `<span>${it.syl.map((s, i) => `<span class="ltr c${i % 2}">${s}</span>`).join("")}</span>` : it.w; await sleep(ms);
       if(!G.ref.keep && !G.locked) f.textContent = "· · ·"; o.hidden = false; again.hidden = false; };
     o.innerHTML = shuffle(it.o).map(([e, n]) => `<button class="opt" data-n="${n}">${e}</button>`).join("");
     o.querySelectorAll(".opt").forEach(b => b.onclick = () => { if(G.locked) return; b.dataset.n === it.o[0][1] ? (f.textContent = it.w, G.solved()) : G.miss(`Das ist ${b.dataset.n}.`); });
-    again.onclick = () => flash(1500); f.textContent = "Achtung …"; setTimeout(() => { if(f.isConnected) flash(1500); }, 1600); },
-  hint(r, it, G){ if(r === 1) return "Schau genau auf den Anfang vom Wort. Du kannst es nochmal zeigen lassen.";
-    if(r === 2){ G.ref.flash(3000, true); return "Ich zeige es dir länger, mit Silben."; }
-    G.ref.keep = true; G.ref.flash(0, true); G.sprich(it.syl.join(" – ")); return `Lies mit mir: ${it.syl.join(" – ")}. Tipp du das Bild.`; },
-  praise: () => "Du hast das Wort gelesen, bevor du getippt hast.",
+    const ms = it.ms || 1500; again.onclick = () => flash(ms); f.textContent = "Achtung …"; setTimeout(() => { if(f.isConnected) flash(ms); }, 1600); },
+  hint(r, it, G){ if(r === 1) return it.satz ? "Lies den ganzen Satz bis zum Punkt. Du kannst ihn nochmal zeigen lassen." : "Schau genau auf den Anfang vom Wort. Du kannst es nochmal zeigen lassen.";
+    if(r === 2){ G.ref.flash(it.satz ? 6000 : 3000, true); return it.satz ? "Ich zeige dir den Satz länger." : "Ich zeige es dir länger, mit Silben."; }
+    const teile = it.satz ? it.syl.map(s => s.trim().replace(/\.$/, "")) : it.syl; // Satz: Wörter ohne Leerzeichen und Punkt
+    G.ref.keep = true; G.ref.flash(0, true); G.sprich(teile.join(" – ")); return `Lies mit mir: ${teile.join(" – ")}. Tipp du das Bild.`; },
+  praise: it => it.satz ? "Du hast den ganzen Satz gelesen, bevor du getippt hast." : "Du hast das Wort gelesen, bevor du getippt hast.",
   probe: { falsch: (st, it) => waehleBild(st, it.o[1][1]), richtig: (st, it) => waehleBild(st, it.o[0][1]) } });
 
 A.art({ id: "stimmt", fach: "deutsch", titel: "Stimmt das? (Satz lesen)", klang: "chime", binary: true,

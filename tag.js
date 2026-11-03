@@ -2,7 +2,8 @@
    Ein Tag hat drei Einladungen in beliebiger Reihenfolge: Lese-Zeit (Bücherregal), Mathe-Zeit und Extra-Zeit
    (Deutsch, Deutsch, HSU nach Spieltagen). Jede Zeit findet an einem Ort statt; der Ort eines neuen Schritts zuerst.
    inhalt (aus den Schritt-Inhalten, Ticket 06): { steps: {id: {home, arten: [...]}}, orte: {ort: [arten]} }.
-   Ein Block: {kind, fach, neu, ort, ueben: [ids], wiederholen: [ids], leicht: [ids], n, leer}. */
+   Ein Block: {kind, fach, neu, zuerst, ort, ueben: [ids], wiederholen: [ids], leicht: [ids], n, leer}.
+   zuerst: der neue Schritt ist aus dem Kapitel, das die Klasse gerade hat; die Katze zeigt ihn, bevor Azra probiert. */
 (function(root){
 "use strict";
 const L = typeof module !== "undefined" && module.exports ? require("./lernen.js") : root.LERNEN;
@@ -21,12 +22,12 @@ function leichte(ids, steps, inhalt, ort){
 // Aufgaben pro Block nach ihrer Zeit pro Aufgabe (lernen.js): Mathe-Zeit wie "math", Extra-Zeit und freies Spiel wie "extra".
 const groesse = (kind, zeiten) => L.blockSize(kind === "mathe" ? "math" : "extra", (zeiten || {})[kind] || []);
 const faellig = (r, today) => r && r.mastered && r.rung < L.POOL && r.due && r.due <= today;
-function block(kind, fach, neu, ort, ids, steps, inhalt, today, zeiten){
+function block(kind, fach, neu, ort, ids, steps, inhalt, today, zeiten, zuerst){
   const n = groesse(kind, zeiten);
-  if(!ort) return { kind, fach, neu: null, ort: null, ueben: [], wiederholen: [], leicht: [], n, leer: true };
+  if(!ort) return { kind, fach, neu: null, zuerst: false, ort: null, ueben: [], wiederholen: [], leicht: [], n, leer: true };
   const ueben = ids.filter(id => id !== neu && imUeben(steps[id]) && passt(inhalt, id, ort));
   const wiederholen = L.dueReviews(steps, ids.filter(id => passt(inhalt, id, ort)), today);
-  return { kind, fach, neu, ort, ueben, wiederholen, leicht: leichte(ids, steps, inhalt, ort), n,
+  return { kind, fach, neu, zuerst: !!(neu && zuerst), ort, ueben, wiederholen, leicht: leichte(ids, steps, inhalt, ort), n,
     leer: !neu && !ueben.length && !wiederholen.length };
 }
 // Ein Block eines Fachs. Neu ist ein angefangener Schritt (Probe/Zeigen) oder der nächste aus chooseNew; nur Schritte
@@ -37,12 +38,16 @@ function block(kind, fach, neu, ort, ids, steps, inhalt, today, zeiten){
 // Nächste Stunde (o.naechste[kind]: beiseitegelegte Schritte): ohne diese planen, als wäre für das Fach ein neuer Tag.
 function fachBlock(kind, fach, skills, steps, inhalt, o){
   const nx = (o.naechste || {})[kind], ohne = nx || [], ids = skills.filter(s => s.subject === fach && !ohne.includes(s.id)).map(s => s.id), f = (o.fest || {})[kind];
-  if(f && f.ort) return block(kind, fach, ids.includes(f.neu) ? f.neu : null, f.ort, ids, steps, inhalt, o.today, o.zeiten); // heute schon festgelegt (ohne Übersprungenes)
+  // Schreibschrift wird nachgespurt, nie vorher gezeigt (wie bei buchen)
+  const zuerst = id => { const sk = skills.find(s => s.id === id), c = id && inhalt.steps[id];
+    return !!sk && !!c && !(c.arten || []).includes("spuren") && L.place(sk, o.classAt, o.today) >= 0; };
+  if(f && f.ort){ const neu = ids.includes(f.neu) ? f.neu : null; // heute schon festgelegt (ohne Übersprungenes)
+    return block(kind, fach, neu, f.ort, ids, steps, inhalt, o.today, o.zeiten, zuerst(neu)); }
   const anbietbar = s => !ohne.includes(s.id) && !!(inhalt.steps[s.id] && !inhalt.steps[s.id].offline && o.offen.includes(inhalt.steps[s.id].home));
   let neu = ids.find(id => laeuft(steps[id]) && inhalt.steps[id] && o.offen.includes(inhalt.steps[id].home)) || null;
   const heuteNeu = nx ? 0 : Math.max((o.newToday || {})[kind] || 0, ids.filter(id => steps[id] && steps[id].started === o.today).length);
   if(!neu) neu = L.chooseNew(skills, steps, { subject: fach, classAt: o.classAt, today: o.today, newToday: heuteNeu, offer: anbietbar });
-  if(neu) return block(kind, fach, neu, inhalt.steps[neu].home, ids, steps, inhalt, o.today, o.zeiten);
+  if(neu) return block(kind, fach, neu, inhalt.steps[neu].home, ids, steps, inhalt, o.today, o.zeiten, zuerst(neu));
   const offen = ids.filter(id => imUeben(steps[id]) || faellig(steps[id], o.today));
   const orte = [...new Set([...Object.keys(inhalt.orte), ...ids.map(id => inhalt.steps[id] && inhalt.steps[id].home).filter(Boolean)])]
     .filter(ort => o.offen.includes(ort));
@@ -72,6 +77,7 @@ function naechste(b, steps, done){
   if(b.leer) return null;
   const neu = b.neu && steps[b.neu], last = done[done.length - 1];
   if(neu && neu.stage === "teach") return { id: b.neu, rolle: "zeigen" };
+  if(b.neu && b.zuerst && (!neu || (neu.stage === "try" && !neu.tries))) return { id: b.neu, rolle: "zeigen" }; // Stoff der Klasse: erst zeigen
   const zugabe = () => {
     if(!last || last.alone || last.skip || done.filter(r => r.rolle === "zugabe").length >= 2) return null;
     const daneben = new Set(done.filter(r => !r.alone).map(r => r.id)), ok = id => !daneben.has(id);
@@ -89,8 +95,10 @@ function naechste(b, steps, done){
   // Übersprungenes kommt in dieser Zeit nicht wieder; ist nichts anderes übrig, endet die Zeit (Rückmeldung der Eltern)
   const ueb = [...(b.neu && imUeben(neu) ? [b.neu] : []), ...b.ueben].filter(id => !skipped(id));
   if(!ueb.length) return offen.length ? { id: offen[0], rolle: "wdh" } : zugabe();
-  const n = id => ids.filter(x => x === id).length;
-  return { id: ueb.reduce((a, c) => n(c) < n(a) ? c : a), rolle: "ueben" };
+  // Ein Schritt bekommt erst seine Aufgaben für einen guten Tag, dann der nächste; danach abwechselnd
+  // gezählt wird nur Üben: die Probe-Aufgaben zählen nicht für den guten Tag (L.answer bucht sie nicht in days)
+  const n = id => done.filter(r => r.id === id && r.rolle !== "probe").length, voll = ueb.find(id => n(id) < L.GUT_N);
+  return { id: voll || ueb.reduce((a, c) => n(c) < n(a) ? c : a), rolle: "ueben" };
 }
 // Einladungen für die offenen Zeiten: der Brief des Tages lädt zur Zeit mit dem neuen Schritt ein (sonst zur ersten
 // Zeit mit Arbeit), die Katze zu den anderen. Fertige und leere Zeiten fallen weg. briefOrte (optional): nur dort

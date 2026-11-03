@@ -18,9 +18,11 @@ function review(r, today, alone){
 }
 // Neuer Schritt: zwei Probe-Aufgaben als normale Bitte. Beide allein gelöst → gleich üben; erster Fehler → Katze zeigt.
 function start(today){ return { stage: "try", days: {}, tries: 0, started: today }; }
-function taught(r){ return { ...r, stage: "practice" }; }
+// Gezeigt: ins Üben. Zeigt die Katze zuerst (Ticket 32), gibt es den Schritt noch nicht: er fängt heute an.
+function taught(r, today){ return { ...(r || start(today)), stage: "practice" }; }
 // Ein Tag zählt, wenn mindestens 5 Aufgaben da sind und davon mindestens 80 % allein gelöst.
-function goodDay(d){ return d.n >= 5 && d.alone / d.n >= 0.8; }
+const GUT_N = 5; // so viele Aufgaben eines Schritts braucht ein guter Tag
+function goodDay(d){ return d.n >= GUT_N && d.alone / d.n >= 0.8; }
 // Eine Aufgabe ist fertig; alone = beim ersten Versuch richtig, vor jedem Tipp.
 // Gemeistert: nur die erste Aufgabe an einem fälligen Tag (oder aus dem Pool) zählt als Wiederholung.
 // Während die Katze zeigt (teach), zählt nichts.
@@ -108,6 +110,6 @@ function blockSize(kind, times){
   const m = xs.length % 2 ? xs[(xs.length - 1) / 2] : (xs[xs.length / 2 - 1] + xs[xs.length / 2]) / 2;
   return Math.max(5, Math.min(12, Math.round(BLOCK[kind].seconds / m)));
 }
-const L = { POOL, addDays, place, master, review, start, taught, answer, chooseNew, dueReviews, sitzt, offlineTick, traced, blockSize };
+const L = { POOL, GUT_N, goodDay, addDays, place, master, review, start, taught, answer, chooseNew, dueReviews, sitzt, offlineTick, traced, blockSize };
 if(typeof module !== "undefined" && module.exports) module.exports = L; else root.LERNEN = L;
 })(this);

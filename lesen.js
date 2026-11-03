@@ -67,12 +67,14 @@ function nachDemBuch(buch, { ersteLesung, steps, inhalt, skills, today }){
   const eigen = inhalt.steps[id].aufgabe ? [{ ...inhalt.steps[id].aufgabe(Math.random, 1), schritt: id }] : [];
   return [...eigen, ...fragen.slice(0, 1).map(a => ({ ...a, schritt: null }))];
 }
-// Der Blitzwort-Schritt, wenn er heute geübt wird oder fällig ist, sonst null.
+// Der Blitzwort-Schritt, wenn er heute geübt wird oder fällig ist, sonst null. Blitzsätze (saetze) nie: das Buch hat nur Wörter.
 function blitzSchritt(steps, inhalt, skills, today){
-  const s = leseSchritte(skills, inhalt).find(s => (inhalt.steps[s.id].arten || []).includes("blitzwort") && (imUeben(steps[s.id]) || faellig(steps[s.id], today)));
+  const s = leseSchritte(skills, inhalt).find(s => (inhalt.steps[s.id].arten || []).includes("blitzwort") && !inhalt.steps[s.id].saetze && (imUeben(steps[s.id]) || faellig(steps[s.id], today)));
   return s ? s.id : null;
 }
-const blitz = (buch, schritt) => (buch.blitz || []).slice(0, 5).map(a => ({ ...a, schritt }));
+// Blitzzeit je Stufe 0–2, wie bei d_lesen_blitz (inhalt.js)
+const BLITZ_MS = [1500, 1000, 700];
+const blitz = (buch, schritt, stufe = 0) => (buch.blitz || []).slice(0, 5).map(a => ({ ...a, item: { ...a.item, ms: BLITZ_MS[stufe] }, schritt }));
 // Stufe: Start von den Eltern (sonst 2), gedeckelt durch das Karibu-Kapitel, außer die Eltern haben sie von Hand gesetzt.
 const deckel = ch => ch <= 2 ? 2 : ch <= 4 ? 3 : ch <= 6 ? 4 : 5;
 const stufe = (lesen, karibu) => { const s = lesen.stufe || 2; return lesen.vonHand ? s : Math.min(s, deckel(karibu)); };

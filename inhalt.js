@@ -597,9 +597,48 @@ schritt("d_lesen_blitz", "regal", "katze", ["blitzwort"], "Read frequent words a
   "Gleich blitzt ein Wort aus deinem Buch auf. Tipp das passende Bild.", {
   gen(rng, s){ const w = eins(rng, WORTE), rest = misch(rng, WORTE.filter(x => x !== w && x[2] !== w[2])), nah = rest.filter(x => aehnlich(w, x)), weit = rest.filter(x => !aehnlich(w, x));
     const n = Math.min(nah.length, s), andere = [...nah.slice(0, n), ...weit.slice(0, 3 - n)];
-    return { art: "blitzwort", item: { w: w[0], syl: w[1].split("-"), o: [w, ...andere].map(x => [x[2], einE(x)]), bitte: "Gleich blitzt ein Wort aus deinem Buch auf. Tipp das passende Bild." } }; },
+    return { art: "blitzwort", item: { w: w[0], syl: w[1].split("-"), o: [w, ...andere].map(x => [x[2], einE(x)]), ms: je(s, 1500, 1000, 700), bitte: "Gleich blitzt ein Wort aus deinem Buch auf. Tipp das passende Bild." } }; },
   zeigen: ["Manche Wörter kennst du schon ganz gut.", "Die kannst du mit einem Blick lesen.", "Schau genau auf den Anfang und das Ende.", "Dann tipp das Bild, das passt."],
   merkheft: "Häufige Wörter lese ich mit einem Blick." });
+
+// Blitzsätze wie im BYLET-F: Tier und Ding in einem Satz; die falschen Bilder haben das andere Tier, das andere Ding oder beides
+// [Wort, Bild, Geschlecht]; Artikel je Geschlecht: der/die/das, ein/eine/ein, einen/eine/ein, den/die/das, dem/der/dem, einem/einer/einem
+const TIERE = [["Hund", "🐶", 0], ["Katze", "🐱", 1], ["Maus", "🐭", 1], ["Ente", "🦆", 1], ["Igel", "🦔", 0], ["Frosch", "🐸", 0],
+  ["Affe", "🐒", 0], ["Kuh", "🐮", 1], ["Schaf", "🐑", 2], ["Hase", "🐰", 0]];
+const DINGE = [["Ball", "⚽", 0], ["Apfel", "🍎", 0], ["Buch", "📖", 2], ["Hut", "🎩", 0], ["Kuchen", "🍰", 0], ["Blume", "🌸", 1],
+  ["Brief", "✉️", 0], ["Eis", "🍦", 2], ["Schuh", "👟", 0], ["Pilz", "🍄", 0], ["Tasse", "☕", 1], ["Banane", "🍌", 1]];
+const ART = { der: ["der", "die", "das"], ein: ["ein", "eine", "ein"], einen: ["einen", "eine", "ein"], den: ["den", "die", "das"], dem: ["dem", "der", "dem"], einem: ["einem", "einer", "einem"] };
+const mit = (w, a) => ART[a][w[2]] + " " + w[0];
+const anfang = s => s[0].toUpperCase() + s.slice(1);
+const SATZ = [
+  [(t, d) => `${anfang(mit(t, "der"))} hat ${mit(d, "einen")}.`, (t, d) => `${anfang(mit(t, "der"))} sieht ${mit(d, "einen")}.`, (t, d) => `${anfang(mit(t, "der"))} mag ${mit(d, "den")}.`],
+  [(t, d) => `${anfang(mit(t, "der"))} sitzt neben ${mit(d, "dem")}.`, (t, d) => `${anfang(mit(t, "der"))} spielt gern mit ${mit(d, "dem")}.`, (t, d) => `Heute bekommt ${mit(t, "der")} ${mit(d, "einen")}.`],
+  [(t, d) => `Am Morgen findet ${mit(t, "der")} im Garten ${mit(d, "einen")}.`, (t, d) => `Im Park trägt ${mit(t, "der")} ${mit(d, "einen")} nach Hause.`,
+   (t, d) => `Nach dem Essen sucht ${mit(t, "der")} ${mit(d, "den")} im Zimmer.`]];
+function blitzsatz(rng, s){
+  const [t, t2] = misch(rng, TIERE), [d, d2] = misch(rng, DINGE);
+  return { t, t2, d, d2, w: eins(rng, SATZ[s])(t, d) };
+}
+schritt("d_lesen_blitzsatz", "regal", "katze", ["blitzwort"], "Read a short sentence at a glance and pick the matching picture",
+  "Gleich blitzt ein Satz auf. Lies ihn bis zum Punkt und tipp das Bild, das genau passt.", {
+  saetze: true, // nicht für die Blitzwörter vor einem Buch (lesen.js)
+  gen(rng, s){ const { t, t2, d, d2, w } = blitzsatz(rng, s), ws = w.split(" ");
+    const o = [[t, d], [t2, d], [t, d2], [t2, d2]].map(([a, b]) => [a[1] + b[1], `${mit(a, "ein")} mit ${mit(b, "einem")}`]);
+    return { art: "blitzwort", item: { w, satz: true, syl: ws.map((x, i) => i < ws.length - 1 ? x + " " : x), o, ms: je(s, 2500, 2500, 3000),
+      bitte: "Gleich blitzt ein Satz auf. Lies ihn bis zum Punkt und tipp das Bild, das genau passt." } }; },
+  zeigen: ["Jetzt blitzt nicht nur ein Wort auf, sondern ein ganzer Satz.", "Lies schnell von links nach rechts bis zum Punkt.",
+    "Merk dir, welches Tier es ist und was dabei ist.", "Dann tipp das Bild, das genau passt."],
+  merkheft: "Bei einem Satz merke ich mir, wer es ist und was dabei ist." });
+
+// Stolperwörter: ein Satz aus den Blitzsätzen mit einem Wort, das nicht hineinpasst (Stufe 2: ein Tunwort statt eines Namenworts)
+const STOLPER_TUN = ["schwimmen", "lachen", "singen", "malen", "tanzen", "rennen", "kochen", "turnen"];
+schritt("d_lesen_stolper", "regal", "katze", ["stolper"], "Find the word that does not belong in a sentence",
+  "In diesem Satz hat sich ein Wort versteckt, das nicht hineinpasst. Tipp es an.", {
+  gen(rng, s){ const { w } = blitzsatz(rng, s), ws = w.split(" "), drin = new Set(ws.map(x => x.replace(/[.,!?]/g, "")));
+    const x = eins(rng, (s === 2 ? STOLPER_TUN : WORTE.map(v => v[0])).filter(v => !drin.has(v))), p = zz(rng, 2, ws.length - 1);
+    return { art: "stolper", item: { s: [...ws.slice(0, p), x, ...ws.slice(p)].join(" "), x, bitte: "In diesem Satz hat sich ein Wort versteckt, das nicht hineinpasst. Tipp es an." } }; },
+  zeigen: ["Manchmal schleicht sich ein Wort in einen Satz.", "Lies den Satz langsam, Wort für Wort.", "Wo stolperst du beim Lesen?", "Dieses Wort tippst du an."],
+  merkheft: "Ich lese jeden Satz bis zum Punkt und merke, wenn ein Wort nicht passt." });
 
 const BILD = { ball: "den Ball", dach: "das Dach", tuer: "die Tür", haus: "das Haus", baum: "den Baum" };
 const BILD_K = { ball: "Ball", dach: "Dach", tuer: "Tür", haus: "Haus", baum: "Baum" };

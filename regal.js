@@ -55,7 +55,7 @@ function waehlen(buch){
   const s = S(), schritt = R.blitzSchritt(s.steps, root.INHALT || { steps: {} }, lernbar(), D());
   if(schritt && s.heute.blitz !== D() && (buch.blitz || []).length){
     s.heute.blitz = D(); ST.save(); sag("Zuerst lesen wir ein paar Blitzwörter.");
-    return aufgaben(R.blitz(buch, schritt), () => lesen(buch));
+    return aufgaben(R.blitz(buch, schritt, root.TAG.stufe(s.steps[schritt], "ueben", D())), () => lesen(buch));
   }
   lesen(buch);
 }

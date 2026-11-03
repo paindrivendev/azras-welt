@@ -185,19 +185,37 @@ function laufen(zeit){
   };
   segment();
 }
-// Die Katze zeigt: höchstens 5 Sätze, einer nach dem anderen; dann kommt die Regel ins Merkheft.
+// Die Katze zeigt: höchstens 5 Sätze, einer nach dem anderen; dann macht sie eine Aufgabe vor, dann kommt die Regel ins Merkheft.
 function zeigen(id, fertig){
   const c = root.INHALT.steps[id], saetze = c.zeigen || []; let i = 0;
   const schritt = () => {
     el("wkBuehne").innerHTML = `<div class="aufgabe zeigen"><p class="satz">${esc(saetze[i])}</p></div>`; sag("c", saetze[i]);
-    knopf("Weiter", () => { if(++i < saetze.length) return schritt(); merk(); });
+    knopf("Weiter", () => { if(++i < saetze.length) return schritt(); vormachen(id, merk); });
   };
   const merk = () => {
-    const s = S(); s.steps[id] = L.taught(s.steps[id]); s.merkheft[id] = s.merkheft[id] || D(); ST.save();
+    const s = S(); s.steps[id] = L.taught(s.steps[id], D()); s.merkheft[id] = s.merkheft[id] || D(); ST.save();
     el("wkBuehne").innerHTML = `<div class="aufgabe zeigen"><p class="merk">${esc(c.merkheft)}</p></div>`; sag("c", "Das kommt in dein Merkheft.");
     knopf("Weiter", fertig);
   };
-  if(saetze.length) schritt(); else merk();
+  if(saetze.length) schritt(); else vormachen(id, merk);
+}
+// Die Katze macht eine echte Aufgabe der leichtesten Stufe vor (Ticket 32); das zählt nie als Azras Antwort.
+function vormachen(id, fertig){
+  const c = root.INHALT.steps[id], a = c.aufgabe && c.aufgabe(Math.random, 0), art = a && A.arten[a.art];
+  if(!art || !art.probe || art.nieFalsch) return fertig();
+  let einmal = { art: a.art, item: a.item }, bitte = true; // nur die Bitte des Nachbarn, kein Dank und kein Lob
+  const lauf = karte.lauf = A.spielen(el("wkBuehne"), { naechste: () => { const x = einmal; einmal = null; return x; },
+    sag: (wer, text) => { if(wer === "n" && bitte){ bitte = false; sag("n", text); } }, sprich: () => {}, hilfeNach: 60000,
+    fertig: () => ende() });
+  let vorbei = false;
+  const ende = () => { if(vorbei) return; vorbei = true; if(karte.lauf === lauf) karte.lauf = null; lauf.stop();
+    sag("c", "So geht das. Jetzt bist du dran!"); knopf("Weiter", fertig); };
+  lauf.box.classList.add("vormachen"); el("wkBuehne").querySelector(".skip").hidden = true;
+  for(const typ of ["pointerdown", "click"]) lauf.box.addEventListener(typ, e => { if(e.isTrusted){ e.stopPropagation(); e.preventDefault(); } }, true); // nur zuschauen
+  sag("c", "Schau zu, ich mache eine vor.");
+  setTimeout(async () => { if(karte.lauf !== lauf || lauf.G.locked) return;
+    try{ await art.probe.richtig(lauf.box, a.item, lauf.G); }catch(e){ console.warn("vormachen", a.art, e); }
+    setTimeout(() => { if(karte.lauf === lauf && !lauf.G.locked) ende(); }, 3000); }, 2200); // ging das Vormachen nicht: trotzdem weiter
 }
 // Ihr Merkheft auf dem Schreibtisch: jede gezeigte Regel, zum Antippen vorgelesen.
 function merkheft(){
