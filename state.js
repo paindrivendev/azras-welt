@@ -19,6 +19,7 @@ const DEFAULTS = {
   zeiten: { mathe: [], extra: [] },  // [{date, seconds}] pro Aufgabe, für die Blockgröße
   merkheft: {},                      // Schritt → Datum, an dem die Katze die Regel gezeigt hat
   ausgelassen: {},                   // übersprungene Schritte → Datum: für immer weg, bis die Eltern sie zurückholen (Ticket 18)
+  proben: [],                        // Proben der Eltern (Ticket 34): [{id, fach, datum, kapitel: [n]}]; Azra sieht sie nie
   spielTag: "",                      // "Nächster Tag" der Eltern: Datum, bis der echte Kalender es einholt (tag.js spielDatum)
   spiele: {},                        // Spiele zwischendurch (spiele.js): {labyrinth, woerter, aquarium}
   // Lese-Zeit (lesen.js): Stufe 1–5 (Eltern), Bücher mit Lesezeichen, Seitenzeiten, angetippte Wörter, eigene Bücher
@@ -37,6 +38,9 @@ function norm(j){
   // früher "Später" (Ticket 12): was dort wartete, hat sie übersprungen, also ist es jetzt ausgelassen
   for(const x of Array.isArray(s.spaeter) ? s.spaeter : []) if(x && typeof x.id === "string" && !s.ausgelassen[x.id]) s.ausgelassen[x.id] = x.date || "earlier";
   delete s.spaeter;
+  const probe = p => p && ["mathe", "deutsch", "hsu"].includes(p.fach) && typeof p.datum === "string" && /^\d{4}-\d{2}-\d{2}$/.test(p.datum)
+    && Array.isArray(p.kapitel) && p.kapitel.length && p.kapitel.every(Number.isInteger);
+  s.proben = (Array.isArray(s.proben) ? s.proben : []).filter(probe).map((p, i) => ({ ...p, id: typeof p.id === "string" && p.id ? p.id : `p${i}-${p.datum}` }));
   for(const k of ["mathe","extra"]) if(!Array.isArray(s.zeiten[k])) s.zeiten[k] = [];
   for(const [k, v] of [["fertig", []], ["gesagt", {}], ["verschoben", []], ["weg", []], ["naechste", {}]]) if(!s.heute[k] || typeof s.heute[k] !== "object" || Array.isArray(s.heute[k]) !== Array.isArray(v)) s.heute[k] = v;
   if(typeof s.spielTag !== "string") s.spielTag = "";

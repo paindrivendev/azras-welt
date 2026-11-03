@@ -25,7 +25,7 @@ const offen = () => [...W.NACHBARN.filter(n => S().met[n.id]).map(n => n.ort), .
 function plan(){
   if(!da()) return null; const h = heute(), s = S();
   h.plan = h.plan || {};
-  const p = T.planen(lernbar(), s.steps, root.INHALT, { classAt: s.classAt, today: D(), played: s.played, offen: offen(), zuletzt: s.zuletzt, zeiten: s.zeiten, fest: h.plan, naechste: h.naechste });
+  const p = T.planen(lernbar(), s.steps, root.INHALT, { classAt: s.classAt, today: D(), played: s.played, offen: offen(), zuletzt: s.zuletzt, zeiten: s.zeiten, fest: h.plan, naechste: h.naechste, proben: s.proben, nachbarn: Object.keys(AM) });
   for(const k of ["mathe", "extra"]) if(!p[k].leer && !h.plan[k]){ h.plan[k] = { ort: p[k].ort, neu: p[k].neu }; ST.save(); }
   return p;
 }
@@ -42,7 +42,9 @@ function einladungen(ohneSpielen){ const p = plan(), h = heute();
 function brief(){
   const e = einladungen().find(e => e.von === "brief"), n = e && AM[e.ort];
   if(!n) return null;
-  return { key: "tag:" + D(), von: n.id, ort: e.ort, zeilen: ["Liebe Azra,", "kannst du mir heute helfen?", "Ich warte auf dich.", n.brief[n.brief.length - 1]] };
+  // am Tag vor einer Probe (nur die Eltern wissen davon) bringt der Nachbar ein Rätselheft
+  const mitte = plan()[e.kind].raetsel ? ["hier ist ein Rätselheft!", "Rätselst du mit mir?"] : ["kannst du mir heute helfen?", "Ich warte auf dich."];
+  return { key: "tag:" + D(), von: n.id, ort: e.ort, zeilen: ["Liebe Azra,", ...mitte, n.brief[n.brief.length - 1]] };
 }
 // Offline-Schritte, die gerade dran sind (Klasse ist so weit, noch nicht geschafft), für einen Nachbarn oder die Katze.
 function offlineFuer(von){
@@ -134,16 +136,16 @@ function laufen(zeit){
   if(karte.lauf){ karte.lauf.stop(); karte.lauf = null; } // nie zwei Stunden gleichzeitig (Review)
   let b = zeit; oeffnen(b.ort); karte.zeit = b.kind; vorzug = null;
   const done = []; let warten = null, zusammen = null;
-  const aufgabe = (id, rolle) => {
+  const aufgabe = (id, rolle, extra) => {
     const s = S(); if(!s.steps[id]) s.steps[id] = L.start(D());
     const a = root.INHALT.steps[id].aufgabe(Math.random, T.stufe(s.steps[id], rolle, D()));
-    return { art: a.art, item: a.item, id, rolle, zusammen: rolle === "zusammen" };
+    return { art: a.art, item: a.item, id, rolle, extra, zusammen: rolle === "zusammen" };
   };
   const naechste = () => {
     if(zusammen){ const id = zusammen; zusammen = null; return aufgabe(id, "zusammen"); }
     const x = T.naechste(b, S().steps, done);
     if(!x || x.rolle === "zeigen"){ warten = x; return null; }
-    return aufgabe(x.id, x.rolle);
+    return aufgabe(x.id, x.rolle, x.extra);
   };
   let aktuell = null;
   // "Alles später": die ganze Zeit wartet bis zum Ende des Tages, gleich geht es mit dem Nächsten weiter (Rückmeldung der Eltern)
@@ -157,7 +159,7 @@ function laufen(zeit){
         // übersprungen: der ganze Schritt ist für immer weg, bis die Eltern ihn zurückholen; die Zeit geht mit einem anderen weiter
         if(r.skip){ if(!s.ausgelassen[c.id]) s.ausgelassen[c.id] = d; ST.save(); done.push({ id: c.id, alone: false, rolle: c.rolle, skip: true }); return; }
         if(r.zusammen) return;
-        const x = T.buchen(s.steps[c.id], d, r.alone, c.art); s.steps[c.id] = x.r; done.push({ id: c.id, alone: r.alone, rolle: c.rolle });
+        const x = T.buchen(s.steps[c.id], d, r.alone, c.art, c.extra); s.steps[c.id] = x.r; done.push({ id: c.id, alone: r.alone, rolle: c.rolle });
         if(x.schon){ sag("c", "Oh, das kannst du ja schon!"); karte.still = Date.now() + 2500; }
         if(x.lernen) sag("c", "Das lernen wir noch.");
         if(!s.played.includes(d)) s.played.push(d);
@@ -180,7 +182,7 @@ function laufen(zeit){
     const s = S(); el("wkAus").hidden = true; fachKnoepfe(null);
     if(b.kind !== "frei" && !heute().fertig.includes(b.kind)){ heute().fertig.push(b.kind); s.zuletzt[b.ort] = D(); s.purse += 50; }
     ST.save(); el("wkBuehne").innerHTML = ""; el("wkC").hidden = true;
-    sag("n", b.kind === "frei" ? "Danke, Azra, das war schön!" : "Danke, Azra, du hast mir sehr geholfen!"); root.WELT.klimper();
+    sag("n", b.kind === "frei" ? "Danke, Azra, das war schön!" : b.raetsel ? "Danke, Azra, das Rätselheft ist fertig. Das hat Spaß gemacht!" : "Danke, Azra, du hast mir sehr geholfen!"); root.WELT.klimper();
     knopf("Fertig", () => { schliessen(); root.WELT.zeige(); });
   };
   segment();

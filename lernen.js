@@ -25,9 +25,9 @@ const GUT_N = 5; // so viele Aufgaben eines Schritts braucht ein guter Tag
 function goodDay(d){ return d.n >= GUT_N && d.alone / d.n >= 0.8; }
 // Eine Aufgabe ist fertig; alone = beim ersten Versuch richtig, vor jedem Tipp.
 // Gemeistert: nur die erste Aufgabe an einem fälligen Tag (oder aus dem Pool) zählt als Wiederholung.
-// Während die Katze zeigt (teach), zählt nichts.
-function answer(r, today, alone){
-  if(r.mastered) return r.seen !== today && (r.rung >= POOL || (r.due && r.due <= today)) ? review(r, today, alone) : r;
+// Während die Katze zeigt (teach), zählt nichts. extra (Probewoche): eine Wiederholung, auch wenn sie nicht fällig ist.
+function answer(r, today, alone, extra){
+  if(r.mastered) return r.seen !== today && (extra || r.rung >= POOL || (r.due && r.due <= today)) ? review(r, today, alone) : r;
   if(r.stage === "teach") return r;
   if(r.stage === "try"){
     const tries = r.tries || 0;
@@ -50,7 +50,9 @@ function place(sk, classAt, today){
 function chooseNew(skills, steps, { subject, classAt, today, newToday, offer = () => true }){
   if(newToday >= 1) return null;
   const byId = Object.fromEntries(skills.map(s => [s.id, s]));
-  const mine = skills.filter(s => s.subject === subject && place(s, classAt, today) <= 0);
+  // HSU (Ticket 35): jedes Thema der 2. Klasse ist offen; spätere Monate kommen nach diesem und den früheren
+  const offen = s => s.subject === "hsu" || place(s, classAt, today) <= 0;
+  const mine = skills.filter(s => s.subject === subject && offen(s));
   const inPractice = skills.filter(s => s.subject === subject && steps[s.id] && !steps[s.id].mastered && steps[s.id].stage !== "offline");
   if(inPractice.length >= 3) return null;
   // Erst die fehlende Voraussetzung (rekursiv), sonst der Schritt selbst; null, wenn eine noch geübt wird.
@@ -60,7 +62,7 @@ function chooseNew(skills, steps, { subject, classAt, today, newToday, offer = (
       const p = byId[id], r = steps[id];
       if(!p || (r && r.mastered)) continue;
       if(r) return null;
-      if(place(p, classAt, today) > 0 || !offer(p)) return null;
+      if(!offen(p) || !offer(p)) return null;
       return resolve(p, seen);
     }
     return s.id;
@@ -72,7 +74,8 @@ function chooseNew(skills, steps, { subject, classAt, today, newToday, offer = (
     .sort((a, b) => place(a, classAt, today) - place(b, classAt, today) || a.order - b.order);
   const currentInPractice = inPractice.filter(s => place(s, classAt, today) === 0).length;
   const fromBacklog = backlog.length && (currentInPractice >= 2 || !current.length) ? firstOf(backlog) : null;
-  return fromBacklog || firstOf(current) || firstOf(backlog);
+  const later = fresh(mine.filter(s => place(s, classAt, today) > 0)).sort((a, b) => place(a, classAt, today) - place(b, classAt, today) || a.order - b.order);
+  return fromBacklog || firstOf(current) || firstOf(backlog) || firstOf(later);
 }
 // Wiederholungen für einen Block: höchstens 3 fällige, die ältesten zuerst; sind es weniger als 2, kommen Schritte
 // aus dem Pool dazu (am längsten nicht gesehen zuerst).

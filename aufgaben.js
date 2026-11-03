@@ -67,7 +67,7 @@ A.spielen = function(stage, opts){
   stage.innerHTML = `<div class="aufgabe"></div><div class="aufgabe-fuss"><button class="btn ghost skip">überspringen ⏭</button></div>`;
   const box = stage.querySelector(".aufgabe"), skip = stage.querySelector(".skip");
   const G = {
-    ref: {}, get locked(){ return locked; }, get rung(){ return Math.min(s.tries, 3); },
+    ref: {}, get locked(){ return locked; }, get rung(){ return Math.min(s.tries, 3); }, get zusammen(){ return !!(cur && cur.zusammen); },
     $: sel => box.querySelector(sel), $$: sel => [...box.querySelectorAll(sel)],
     klang: k => (KLANG[k] || KLANG.chime)(),
     say: (wer, text) => opts.sag(wer, text),

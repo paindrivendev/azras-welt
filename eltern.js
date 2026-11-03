@@ -4,6 +4,7 @@
 (function(root){
 "use strict";
 const L = typeof module !== "undefined" && module.exports ? require("./lernen.js") : root.LERNEN;
+const T = typeof module !== "undefined" && module.exports ? require("./tag.js") : root.TAG;
 const BUCH = { deutsch: { name: "Karibu", max: 12 }, mathe: { name: "Welt der Zahl", max: 15 } };
 const FAECHER = ["mathe", "deutsch", "hsu"];
 // Klassen-Kapitel setzen; neue Schritte richten sich ab dem nächsten Plan danach (tag.js → chooseNew).
@@ -37,7 +38,27 @@ function ausgelassen(skills, aus, inhalt){
   return skills.filter(s => aus[s.id]).sort(order).map(s => ({ id: s.id, subject: s.subject, chapter: s.chapter, title: titel(s, inhalt), date: aus[s.id] }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
-const E = { BUCH, setChapter, tick, status, record, offline, ausgelassen };
+// Proben (Ticket 34): Fach, Datum und Kapitel ("3, 4"); HSU-Kapitel sind Schulmonate (9–12, 1–7). false = nicht eingetragen.
+function probeNeu(S, { fach, datum, kapitel }){
+  const ok = n => fach === "hsu" ? n >= 1 && n <= 12 && n !== 8 : BUCH[fach] && n >= 1 && n <= BUCH[fach].max;
+  const k = [...new Set(String(kapitel || "").split(/[^0-9]+/).filter(Boolean).map(Number))].sort((a, b) => a - b);
+  if(!FAECHER.includes(fach) || !/^\d{4}-\d{2}-\d{2}$/.test(datum || "") || !k.length || !k.every(ok)) return false;
+  S.proben = [...(S.proben || []), { id: `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, fach, datum, kapitel: k }];
+  return true;
+}
+// Wo die Probe gerade steht (für die Liste der Eltern).
+function probeWann(p, today){
+  if(p.datum < today) return "past"; if(p.datum === today) return "today";
+  const w = T.probeFuer([p], p.fach, today); return w ? (w.vorabend ? "tomorrow: Rätselheft today" : "Probe week now") : "week starts " + L.addDays(p.datum, -7);
+}
+function probeWeg(S, id){ S.proben = (S.proben || []).filter(p => p.id !== id); }
+// Probe-Check: jeder Schritt der Probe-Kapitel, gemeistert / im Üben / nicht angefangen, mit "allein" in Prozent über alle Tage.
+function probeCheck(skills, steps, inhalt, probe){
+  return skills.filter(s => s.subject === probe.fach && probe.kapitel.includes(s.chapter)).sort(order).map(s => { const r = steps[s.id];
+    const d = Object.values((r && r.days) || {}), n = d.reduce((a, x) => a + x.n, 0), allein = d.reduce((a, x) => a + x.alone, 0);
+    return { id: s.id, chapter: s.chapter, title: titel(s, inhalt), stand: !r ? "not started" : r.mastered ? "mastered" : "in practice", allein: n ? Math.round(100 * allein / n) : null }; });
+}
+const E = { BUCH, setChapter, tick, status, record, offline, ausgelassen, probeNeu, probeWeg, probeCheck, probeWann };
 if(typeof module !== "undefined" && module.exports){ module.exports = E; return; }
 
 // ---------- Bildschirm ----------
@@ -52,11 +73,11 @@ function render(){
   const S = root.S, skills = root.SKILLS || [], today = root.WELT.today(), inhalt = root.INHALT || { steps: {} };
   const rec = record(skills, S.steps, inhalt), off = offline(skills, S.steps, inhalt, today);
   let h = `<header><h1>Parent area</h1><button class="eb" data-e="zu">Back to the game</button></header>
-  <p class="muted">Azra never sees these numbers. "Alone" = right on the first try, before any hint.</p>${note ? `<p class="ok" role="status">${esc(note)}</p>` : ""}${heuteTeil(skills, inhalt)}${ausTeil(skills, inhalt)}${sicherungTeil()}
+  <p class="muted">Azra never sees these numbers. "Alone" = right on the first try, before any hint.</p>${note ? `<p class="ok" role="status">${esc(note)}</p>` : ""}${heuteTeil(skills, inhalt)}${probeTeil(skills, inhalt)}${ausTeil(skills, inhalt)}${sicherungTeil()}
   <h2>Class chapters</h2><div class="erow">${["deutsch", "mathe"].map(f => `<label>${BUCH[f].name} (${SUBJ[f]})
     <select id="k-${f}">${Array.from({ length: BUCH[f].max }, (_, i) => `<option${kapitel(S, f) === i + 1 ? " selected" : ""}>${i + 1}</option>`).join("")}</select></label>`).join("")}
     <button class="eb" data-e="kapitel">Save</button></div>
-  <p class="muted">New steps never go past these chapters. HSU follows the school month by itself.</p>
+  <p class="muted">New steps never go past these chapters. HSU offers this month's topic first, then every other grade 2 topic.</p>
   <h2>Offline steps</h2>`;
   h += off.length ? `<table><tr><th>Step</th><th>Ticked</th><th></th></tr>${off.map(r => `<tr><td>${esc(r.title)}<br><span class="muted">${SUBJ[r.subject]} · chapter ${r.chapter}</span></td>
     <td>${r.mastered ? "mastered" : r.marks.length ? esc(r.marks.join(", ")) : "–"}</td><td>${r.mastered ? "" : `<button class="eb" data-e="tick:${r.id}"${r.heute ? " disabled" : ""}>${r.heute ? "Ticked today" : "Done today"}</button>`}</td></tr>`).join("")}</table>
@@ -77,7 +98,7 @@ function heuteTeil(skills, inhalt){
   const h = root.S.heute, step = id => { const s = skills.find(k => k.id === id); return s ? titel(s, inhalt) : ""; };
   const zeilen = ["mathe", "extra"].filter(k => !p[k].leer || h.weg.includes(k)).map(k => { const b = p[k], f = P.FACH[b.fach];
     const stand = h.fertig.includes(k) ? "done" : h.weg.includes(k) ? "skipped today" : h.spielen === true ? "not today (just playing)" : h.verschoben.includes(k) ? "put off until later" : "open";
-    return `<tr><td>${esc(SUBJ[b.fach])}<br><span class="muted">${esc(b.neu ? "new: " + step(b.neu) : "practice")}</span></td><td>${stand}</td>
+    return `<tr><td>${esc(SUBJ[b.fach])}<br><span class="muted">${esc(b.raetsel ? "Rätselheft (Probe tomorrow)" : b.neu ? "new: " + step(b.neu) : "practice")}</span></td><td>${stand}</td>
       <td><button class="eb" data-e="weg:${k}"${h.fertig.includes(k) || h.weg.includes(k) ? " disabled" : ""}>Skip ${esc(f ? f.name : SUBJ[b.fach])} today</button>
       <button class="eb" data-e="neu:${k}">Next lesson now</button></td></tr>`; }).join("");
   const spielt = P.nurSpielen ? `<p><b>Azra chose "Nur spielen" (just play) today.</b> Nothing invites her to learn until tomorrow, unless she taps "Doch lernen".</p>
@@ -86,6 +107,20 @@ function heuteTeil(skills, inhalt){
   <p class="muted">Skip: no German (or maths) today, no coins; tomorrow it goes on where it stopped. Next lesson: today's steps of that subject wait, the following lesson comes now. Azra has the same two buttons in each section.</p>
   <div class="erow"><button class="eb" data-e="tag">Start next day</button></div>
   <p class="muted">Starts tomorrow's plan now (new letter, new sections). When the real calendar reaches that day it simply goes on from there.</p>`;
+}
+// Proben (Ticket 34): eintragen, Probe-Check, löschen. Azra sieht nichts davon; ihre Zeit neigt sich nur still dahin.
+function probeTeil(skills, inhalt){
+  const S = root.S, today = root.WELT.today(), liste = [...S.proben].sort((a, b) => a.datum.localeCompare(b.datum));
+  const zeile = p => { const rows = probeCheck(skills, S.steps, inhalt, p), w = T.probeFuer([p], p.fach, today);
+    const wann = probeWann(p, today);
+    return `<details${w ? " open" : ""}><summary>${SUBJ[p.fach]} on ${esc(p.datum)} · ${p.fach === "hsu" ? "month" : "chapter"}${p.kapitel.length > 1 ? "s" : ""} ${esc(p.kapitel.join(", "))} · ${wann}
+      <button class="eb" data-e="probeWeg:${esc(p.id)}">Delete</button></summary>
+      <table><tr><th>Ch.</th><th>Step</th><th>Status</th><th>Alone</th></tr>${rows.map(r => `<tr><td>${r.chapter}</td><td>${esc(r.title)}</td><td>${r.stand}</td><td>${r.allein === null ? "–" : r.allein + " %"}</td></tr>`).join("") || `<tr><td colspan="4" class="muted">No steps in these chapters.</td></tr>`}</table></details>`; };
+  return `<h2>Probe (test at school)</h2><div class="proben">${liste.map(zeile).join("") || `<p class="muted">No Probe entered.</p>`}</div>
+  <div class="erow"><label>Subject<select id="k-pfach">${FAECHER.map(f => `<option value="${f}">${SUBJ[f]}</option>`).join("")}</select></label>
+    <label>Date<input type="date" id="k-pdatum"></label><label>Chapters<input id="k-pkap" inputmode="numeric" placeholder="3, 4" size="6"></label>
+    <button class="eb" data-e="probe">Add</button></div>
+  <p class="muted">From 7 days before, that subject's time quietly favours these chapters: practice first, one extra check of what she has mastered, nothing new from other chapters. The day before, a neighbour brings a Rätselheft mixing them. Azra is never told. For HSU, enter the school months (e.g. 11 for November). A lesson she has finished or is in right now stays as it is.</p>`;
 }
 // Übersprungen (Ticket 18): kommt nie von selbst wieder; die Eltern sehen es und holen es zurück, wenn es gerichtet ist.
 function ausTeil(skills, inhalt){
@@ -115,6 +150,10 @@ function lesenTeil(S){
     return `<tr><td>${b.stufe}</td><td>${esc(b.titel)}<br><span class="muted">${esc(b.en || "")}</span></td><td>${r.fertig ? r.fertig + "×" : r.seite ? "bookmark" : "–"}</td>
       <td>${b.lizenz ? `<a href="${esc(b.lizenz.url)}" target="_blank" rel="noopener">${esc(b.lizenz.name)}</a> · <a href="${esc(b.lizenz.quelle)}" target="_blank" rel="noopener">source</a><br><span class="muted">${esc(b.lizenz.text)}</span>` : "Westpark book (written for the game)"}</td></tr>`; }).join("")}</table></details>`;
 }
+// Nach einer Änderung an den Proben wird heute neu geplant, außer was fertig ist oder gerade läuft.
+function neuPlanen(geaendert){ const h = root.S.heute, P = root.SPIEL;
+  if(geaendert && h.plan) for(const k of ["mathe", "extra"]) if(!h.fertig.includes(k) && !(P && P.zeit === k)) delete h.plan[k];
+  return geaendert; }
 const ACT = {
   lesestufe(){ root.S.lesen.stufe = +$("#k-lesen").value; root.S.lesen.vonHand = true; ST.save(); note = "Saved. Reading level set by hand."; render(); },
   zu(){ panel.hidden = true; note = ""; if(root.SPIEL && !root.SPIEL.offen) root.WELT.zeige(); },
@@ -122,6 +161,9 @@ const ACT = {
   neu(k){ const P = root.SPIEL; if(P.zeit === k) P.schliessen(); note = P.naechsteStunde(k) ? "The next lesson is ready. Azra finds it in today's letter or by tapping her cat." : "There is no other lesson for this subject today, so it is skipped for today."; render(); },
   lernen(){ root.SPIEL.spielen(false); note = "Learning is back for today."; render(); },
   tag(){ root.SPIEL.neuerTag(); note = "A new day has started."; render(); },
+  probe(){ note = neuPlanen(probeNeu(root.S, { fach: $("#k-pfach").value, datum: $("#k-pdatum").value, kapitel: $("#k-pkap").value }))
+    ? "Probe added. Azra will not see it." : "Not added: pick a date and chapters that exist (HSU: school months 9–12, 1–7)."; ST.save(); render(); },
+  probeWeg(id){ probeWeg(root.S, id); neuPlanen(true); ST.save(); note = "Probe deleted."; render(); },
   zurueck(id){ delete root.S.ausgelassen[id]; ST.save(); note = "Brought back. It is in her plan again."; render(); },
   kapitel(){ for(const f of ["deutsch", "mathe"]) setChapter(root.S, f, $("#k-" + f).value); ST.save(); note = "Saved. New steps follow these chapters."; render(); },
   sichern(){ const d = root.WELT.today(), a = document.createElement("a");
@@ -131,7 +173,7 @@ const ACT = {
     f.text().then(t => { note = ST.wiederherstellen(t) ? "Restored. Her progress from the backup is back." : "That file is not an Azras Welt backup. Nothing changed."; render(); }); }; i.click(); },
   tick(id){ tick(root.S, id, root.WELT.today()); ST.save(); render(); }
 };
-panel.addEventListener("click", e => { const el = e.target.closest("[data-e]"); if(!el || el.disabled) return; const [a, arg] = el.dataset.e.split(":"); ACT[a](arg); });
+panel.addEventListener("click", e => { const el = e.target.closest("[data-e]"); if(!el || el.disabled) return; if(el.closest("summary")) e.preventDefault(); const [a, arg] = el.dataset.e.split(":"); ACT[a](arg); });
 function open(){ if(root.speechSynthesis) speechSynthesis.cancel(); note = ""; render(); panel.hidden = false; }
 // Langes Drücken (1,2 s) öffnet; kurzes Tippen tut nichts, damit Azra nicht hineinstolpert.
 let pressT = null;

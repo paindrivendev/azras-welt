@@ -399,6 +399,102 @@ const FORMEN = [["Dreieck", ["▲", "△", "◢", "◣", "▼"], "3 Ecken", "Ein
   ["Quadrat", ["■", "□"], "4 gleich lange Seiten", "Ein Quadrat hat 4 gleich lange Seiten.", ["🎲 die Seite vom Würfel", "🏁 ein Feld vom Schachbrett"]],
   ["Rechteck", ["▬", "▭", "▮", "▯"], "2 lange und 2 kurze Seiten", "Ein Rechteck hat 2 lange und 2 kurze Seiten.", ["🚪 die Tür", "✉️ der Briefumschlag"]],
   ["Kreis", ["●", "○", "⬤"], "keine Ecke", "Ein Kreis hat keine Ecke.", ["🍽️ der Teller", "🪙 die Münze"]]];
+// Blitzrechnen (Ticket 33): Einspluseins schnell im Kopf. Stufe 0 bis 10, 1 von 11 bis 19 ohne Übergang oder Verdoppeln,
+// 2 über den Zehner oder mit Zehnerzahlen. Der Blitz (ms) wird schneller; wer langsamer ist, verliert nichts.
+function blitzAufgabe(rng, s){
+  const plus = ja(rng);
+  if(s === 0){ if(plus){ const a = zz(rng, 1, 9); return [a, zz(rng, 1, 10 - a), "+"]; } const a = zz(rng, 2, 10); return [a, zz(rng, 1, a), "-"]; }
+  if(s === 1){ if(rng() < 0.25){ const a = zz(rng, 6, 10); return [a, a, "+"]; }
+    if(plus){ const a = zz(rng, 11, 18); return [a, zz(rng, 1, 19 - a), "+"]; } const a = zz(rng, 12, 19); return [a, zz(rng, 1, a - 11), "-"]; }
+  if(rng() < 1 / 3){ if(plus){ const a = 10 * zz(rng, 1, 8); return [a, 10 * zz(rng, 1, 10 - a / 10), "+"]; } const a = 10 * zz(rng, 2, 10); return [a, 10 * zz(rng, 1, a / 10 - 1), "-"]; }
+  if(plus){ const a = zz(rng, 2, 9); return [a, zz(rng, 11 - a, 9), "+"]; } const a = zz(rng, 11, 18); return [a, zz(rng, a - 9, 9), "-"];
+}
+schritt("m_blitzrechnen", "laden", "hilde", ["blitzrechnen"], "Quick sums: plus and minus facts to 20 and whole tens, against the lightning",
+  "Blitzrechnen! Wie viel ist 7 + 8?", {
+  gen(rng, s){ const [a, b, op] = blitzAufgabe(rng, s);
+    return { art: "blitzrechnen", item: { a, b, op, res: op === "+" ? a + b : a - b, ms: je(s, 8000, 7000, 6000), bitte: `Blitzrechnen! Wie viel ist ${a} ${op === "+" ? "+" : "−"} ${b}?` } }; },
+  zeigen: ["Beim Blitzrechnen rechnest du ganz schnell im Kopf.", "Viele Aufgaben weißt du schon auswendig, zum Beispiel 5 + 5 = 10.",
+    "Bei 7 + 8 denke ich: 7 + 7 = 14, und eins mehr ist 15.", "Bist du schneller als der Blitz, bekommst du einen Blitz-Stern."],
+  merkheft: "Was ich auswendig weiß, rechne ich blitzschnell; sonst hilft mir eine Nachbaraufgabe." });
+
+// ---------- Geld (Ticket 33, Welt der Zahl Kap. 6): Münzen und Scheine bis 50 €, gemischte Schreibweise wie in der Schule ----------
+const betrag = c => c < 100 ? c + " ct" : c % 100 ? `${Math.floor(c / 100)} € ${c % 100} ct` : c / 100 + " €";
+const GELD = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000];
+// Bild einer Münze oder eines Scheins wie auf dem Kassentablett (Klassen aus aufgaben.css)
+const geldBild = v => `<span class="coin c${v}${v >= 500 ? " schein" : ""}">${betrag(v)}</span>`;
+schritt("m_geld_kennen", "laden", "hilde", ["reihenfolge"], "Know coins and notes and order them by value",
+  "Räum meine Kassenschublade ein: vom kleinsten zum größten Geld.", {
+  gen(rng, s){ const w = misch(rng, GELD.filter(v => v <= je(s, 50, 200, 5000))).slice(0, 4).sort((a, b) => a - b);
+    const bitte = "Räum meine Kassenschublade ein: vom kleinsten zum größten Geld.";
+    return { art: "reihenfolge", item: { q: "Vom kleinsten zum größten Geld:", c: w.map(v => [geldBild(v), betrag(v)]), bitte,
+      anfang: "Welches Geld ist am wenigsten wert?", lob: "Du hast das Geld nach seinem Wert geordnet." } }; },
+  zeigen: ["Es gibt Cent-Münzen, Euro-Münzen und Euro-Scheine.", "Die kleinste Münze ist 1 Cent.", "100 Cent sind so viel wie 1 Euro.",
+    "Ein 5-Euro-Schein ist mehr wert als jede Münze."],
+  merkheft: "100 ct sind 1 €; Scheine sind mehr wert als Münzen." });
+
+const KASSE = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+schritt("m_geld_betraege", "laden", "hilde", ["bezahlen"], "Lay money amounts, mixed writing (9 € 30 ct)",
+  "Für den Lieferanten brauche ich genau 3 € 50 ct. Leg das Geld auf die Theke.", {
+  gen(rng, s){ const p = s === 0 ? 100 * zz(rng, 1, 10) : s === 1 ? 100 * zz(rng, 1, 9) + 10 * zz(rng, 1, 9) : 100 * zz(rng, 10, 49) + 10 * zz(rng, 0, 9);
+    return { art: "bezahlen", item: { p, geld: s === 2 ? GELD : KASSE, bitte: `Für den Lieferanten brauche ich genau ${betrag(p)}. Leg das Geld auf die Theke.` } }; },
+  zeigen: ["3 € 50 ct heißt: drei Euro und fünfzig Cent.", "Ich lege zuerst die Euro hin, hier eine 2-€-Münze und eine 1-€-Münze.",
+    "Dann lege ich die Cent hin, hier eine 50-ct-Münze.", "Mit großen Münzen brauche ich weniger Geld."],
+  merkheft: "Erst lege ich die Euro, dann die Cent; große Münzen zuerst." });
+
+schritt("m_geld_wechseln", "laden", "hilde", ["bezahlen"], "Change money: the same amount in smaller coins and notes",
+  "Ich brauche Kleingeld. Wechselst du mir 1 € in kleineres Geld?", {
+  gen(rng, s){ const p = eins(rng, je(s, [10, 20, 50, 100], [100, 200, 500], [1000, 2000, 5000]));
+    return { art: "bezahlen", item: { p, geld: GELD.filter(v => v < p), bitte: `Ich brauche Kleingeld. Wechselst du mir ${betrag(p)} in kleineres Geld?`,
+      lob: "Du hast gleich viel Geld in kleineren Stücken hingelegt." } }; },
+  zeigen: ["Wechseln heißt: gleich viel Geld, aber in kleineren Stücken.", "Für 1 € kann ich zwei 50-ct-Münzen geben.", "Oder fünf 20-ct-Münzen, das ist auch 1 €.",
+    "Am Ende zähle ich nach, ob es wieder genau 1 € sind."],
+  merkheft: "Beim Wechseln bleibt der Betrag gleich, nur die Münzen werden kleiner." });
+
+// im Akkusativ: "Ich nehme einen Kakao …"
+const CAFE_DINGE = ["einen Kakao", "eine Brezel", "einen Apfelsaft", "einen Muffin", "eine Semmel", "ein Stück Kuchen", "ein Eis", "einen Keks"];
+const LADEN_DINGE = ["ein Buch", "einen Malkasten", "einen Ball", "ein Puzzle", "eine Mütze", "ein Stofftier"];
+schritt("m_geld_einkaufen", "cafe", "otto", ["wechselgeld"], "Shopping: add two prices and give the change",
+  "Ich nehme einen Kakao für 45 ct und einen Keks für 30 ct. Hier ist 1 €. Wie viel bekomme ich zurück?", {
+  gen(rng, s){ let pa, pb;
+    if(s === 0){ pa = 5 * zz(rng, 2, 9); pb = 5 * zz(rng, 2, (95 - pa) / 5); } else if(s === 1){ pa = 10 * zz(rng, 5, 20); pb = 10 * zz(rng, 5, 20); }
+    else { pa = 10 * zz(rng, 20, 90); pb = 10 * zz(rng, 20, 90); }
+    const p = pa + pb, bez = s === 0 ? 100 : s === 1 ? (p < 200 ? 200 : 500) : (p < 1000 ? 1000 : 2000);
+    const [a, b] = misch(rng, s === 2 ? LADEN_DINGE : CAFE_DINGE);
+    return { art: "wechselgeld", item: { p, pa, pb, bez, geld: GELD.filter(v => v < bez), thing: `${a} und ${b}`,
+      tag: `${betrag(pa)} + ${betrag(pb)} · bezahlt: ${betrag(bez)}`,
+      bitte: `Ich nehme ${a} für ${betrag(pa)} und ${b} für ${betrag(pb)}. Hier ${bez === 100 ? "ist" : "sind"} ${betrag(bez)}. Wie viel bekomme ich zurück?` } }; },
+  zeigen: ["Zuerst rechne ich zusammen, was alles kostet.", "45 ct und 30 ct sind 75 ct.", "Dann zähle ich von 75 ct weiter bis 1 €.", "Von 75 bis 100 fehlen 25, also gebe ich 25 ct zurück."],
+  merkheft: "Rückgeld: erst die Preise zusammenzählen, dann bis zum bezahlten Geld weiterzählen." });
+
+// ---------- Uhr (Ticket 33, Welt der Zahl Kap. 14): so, wie man in Bayern in der Schule die Uhrzeit sagt ----------
+const STUNDE = ["zwölf", "eins", "zwei", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwölf"];
+function uhrzeit(h, m){
+  const H = STUNDE[h], N = STUNDE[h % 12 + 1];
+  return { 0: `${h} Uhr`, 5: `fünf nach ${H}`, 10: `zehn nach ${H}`, 15: `Viertel nach ${H}`, 20: `zwanzig nach ${H}`, 25: `fünf vor halb ${N}`, 30: `halb ${N}`,
+    35: `fünf nach halb ${N}`, 40: `zwanzig vor ${N}`, 45: `Viertel vor ${N}`, 50: `zehn vor ${N}`, 55: `fünf vor ${N}` }[m];
+}
+const uhrItem = (h, m, say) => ({ art: "uhr", item: { h, m, say, bitte: `Treffen wir uns um ${say} am See? Stell die Uhr, damit du es nicht vergisst.` } });
+schritt("m_uhr_volle_halbe", "see", "fridolin", ["uhr"], "Clock: full and half hours, also 15:00",
+  "Treffen wir uns um halb vier am See? Stell die Uhr, damit du es nicht vergisst.", {
+  gen(rng, s){ const h = zz(rng, 1, 12);
+    if(s === 2 && ja(rng, .4)){ const h24 = zz(rng, 13, 22); return uhrItem(h24 - 12, 0, `${h24} Uhr`); }
+    const m = s === 0 ? 0 : eins(rng, [0, 30]); return uhrItem(h, m, uhrzeit(h, m)); },
+  zeigen: ["Der kurze Zeiger zeigt die Stunde, der lange die Minuten.", "Steht der lange Zeiger oben auf der 12, ist es eine volle Stunde.",
+    "Steht er unten auf der 6, ist es halb, zum Beispiel halb vier.", "Bei halb vier steht der kurze Zeiger zwischen der 3 und der 4."],
+  merkheft: "Langer Zeiger oben: volle Stunde; langer Zeiger unten: halb." });
+schritt("m_uhr_viertel", "see", "fridolin", ["uhr"], "Clock: quarter past and quarter to",
+  "Treffen wir uns um Viertel nach vier am See? Stell die Uhr, damit du es nicht vergisst.", {
+  gen(rng, s){ const h = zz(rng, 1, 12), m = eins(rng, s === 0 ? [15, 45] : [0, 15, 30, 45]); return uhrItem(h, m, uhrzeit(h, m)); },
+  zeigen: ["Eine Stunde hat vier Viertel.", "Steht der lange Zeiger auf der 3, ist es Viertel nach.", "Steht er auf der 9, ist es Viertel vor.",
+    "Viertel vor neun ist also kurz vor neun Uhr."],
+  merkheft: "Langer Zeiger auf der 3: Viertel nach; auf der 9: Viertel vor." });
+schritt("m_uhr_minuten", "see", "fridolin", ["uhr"], "Clock in 5-minute steps",
+  "Treffen wir uns um zwanzig nach sieben am See? Stell die Uhr, damit du es nicht vergisst.", {
+  gen(rng, s){ const h = zz(rng, 1, 12), m = eins(rng, je(s, [5, 10, 50, 55], [5, 10, 20, 40, 50, 55], [5, 10, 20, 25, 35, 40, 50, 55])); return uhrItem(h, m, uhrzeit(h, m)); },
+  zeigen: ["Von einer Zahl zur nächsten sind es fünf Minuten.", "Ich zähle mit dem langen Zeiger in Fünferschritten: 5, 10, 15, 20.",
+    "Steht er auf der 4, ist es zwanzig nach.", "Nach halb zählt man vor der nächsten Stunde rückwärts."],
+  merkheft: "Der lange Zeiger geht in Fünferschritten: auf der 4 sind es 20 Minuten." });
+
 schritt("m_geo_flaechen", "basteln", "katze", ["paare"], "Flat shapes: triangle, circle, rectangle, square",
   "Mila braucht Papierformen für ihr Fest. Sortierst du sie: Dreiecke, Vierecke, Kreise?", {
   ersatzFuer: "sortieren",
@@ -1098,11 +1194,507 @@ schritt("h_feuer", "basteln", "mila", ["stimmt"], "Fire: dangers and safe use (c
   zeigen: ["Feuer ist warm und hell, aber auch gefährlich.", "Eine Kerze lasse ich nie allein brennen.", "Eine Kerze zünde ich nur mit einem Erwachsenen an.", "Brennt es, rufe ich einen Erwachsenen oder die 112."],
   merkheft: "Mit Feuer gehe ich nur zusammen mit einem Erwachsenen um." });
 
+// ---------- HSU: alle Themen der 2. Klasse (Ticket 35) ----------
+// Ein Wissens-Schritt: Sätze (stimmt, mit Bild), Körbe zum Sortieren (muell mit eigenen Körben), Bildfolgen (reihenfolge)
+// und Vierer, von denen einer nicht dazupasst (raus). Stufe 0 nimmt Sätze und Vierer, ab Stufe 1 auch Körbe und Folgen;
+// beim Sortieren werden es mit der Stufe mehr Dinge (4, 5, 6). Was ein Schritt nicht hat, fällt weg.
+function wissen(id, home, von, en, bitte, w){
+  const arten = [w.stimmt && "stimmt", w.dinge && "muell", w.reihen && "reihenfolge", w.raus && "raus", w.bild && "beschriften"].filter(Boolean);
+  schritt(id, home, von, arten, en, bitte, { zeigen: w.zeigen, merkheft: w.merkheft, gen(rng, s){
+    const leicht = arten.filter(a => a === "stimmt" || a === "raus"), art = eins(rng, s === 0 && leicht.length ? leicht : arten);
+    if(art === "stimmt"){ const [satz, a, f, bild] = eins(rng, w.stimmt); return { art, item: { s: satz, a, f, bild, bitte: `${w.frage || "Stimmt das?"} „${satz}“` } }; }
+    if(art === "reihenfolge"){ const [q, c, anfang] = eins(rng, w.reihen); return { art, item: { q, c, anfang, bitte: `${q} Leg die Bilder der Reihe nach.` } }; }
+    if(art === "raus"){ const [c, x, tipp] = eins(rng, w.raus); return { art, item: { c, x, tipp, bitte: w.rausBitte || "Drei passen zusammen, eins nicht. Tipp auf das, was nicht dazupasst." } }; }
+    if(art === "beschriften") return { art, item: { z: w.bild, bitte } };
+    const t = misch(rng, w.dinge).slice(0, Math.min(w.dinge.length, 4 + s));
+    if(new Set(t.map(d => d[2])).size < 2) t[t.length - 1] = w.dinge.find(d => d[2] !== t[0][2]); // immer mindestens zwei Körbe
+    return { art, item: { t, koerbe: w.koerbe, h1: w.h1, lob: w.lob, dank: w.dank, bitte: w.sortiere } };
+  } });
+}
+
+wissen("h_brandschutz", "basteln", "katze", "Fire safety at school, emergency number 112, what to do in a fire",
+  "Was tust du, wenn es brennt? Stimmt das? „Ich rufe die 112 an.“", {
+  stimmt: [["Die Feuerwehr rufe ich mit der Nummer 112.", true, "Doch: 112 ist die Nummer der Feuerwehr.", "🚒"],
+    ["Wenn es brennt, gehe ich mit meiner Klasse ruhig hinaus.", true, "Doch: Ruhig und zusammen kommen alle sicher hinaus.", "🚪"],
+    ["Bei Rauch bleibe ich ganz unten am Boden.", true, "Doch: Unten ist weniger Rauch.", "🌫️"],
+    ["Wenn es brennt, hole ich schnell noch meinen Ranzen.", false, "Ich lasse alles liegen und gehe sofort hinaus.", "🎒"],
+    ["Wenn es brennt, verstecke ich mich im Schrank.", false, "Ich verstecke mich nie, ich gehe hinaus zum Sammelplatz.", "🚪"],
+    ["Bei einem Brand fahre ich mit dem Aufzug.", false, "Ich nehme immer die Treppe, nie den Aufzug.", "🛗"],
+    ["Am Sammelplatz warte ich, bis die Lehrerin alle gezählt hat.", true, "Doch: So weiß sie, dass niemand fehlt.", "🧑‍🏫"]],
+  reihen: [["Was sage ich am Telefon, wenn ich die 112 anrufe?", [["📍", "Wo ist es?"], ["🔥", "Was ist passiert?"], ["🤕", "Wie viele sind verletzt?"], ["👂", "Warten auf Fragen"]], "Was sagst du ganz am Anfang?"],
+    ["Feueralarm in der Schule: Was kommt zuerst?", [["🔔", "Alarm hören"], ["🧍", "Aufstellen"], ["🚶", "Ruhig hinausgehen"], ["🌳", "Am Sammelplatz warten"]]]],
+  raus: [[[["🚒", "Feuerwehrauto"], ["🧯", "Feuerlöscher"], ["🪣", "Löscheimer"], ["🕯️", "Kerze"]], 3, "Drei helfen beim Löschen."],
+    [[["📞", "112 anrufen"], ["🚪", "Hinausgehen"], ["🙋", "Erwachsene holen"], ["🙈", "Verstecken"]], 3, "Drei helfen, wenn es brennt."]],
+  zeigen: ["Wenn es brennt, rufe ich die 112 an.", "Ich sage, wo es brennt und was passiert ist, und warte auf Fragen.", "Beim Feueralarm gehe ich mit der Klasse ruhig hinaus.", "Am Sammelplatz warten wir, bis alle gezählt sind."],
+  merkheft: "Wenn es brennt, rufe ich die 112 und gehe ruhig hinaus." });
+
+wissen("h_feste", "tagebuch", "katze", "Festivals in the year and their dates",
+  "Welches Fest kommt zuerst im Jahr? Leg die Feste der Reihe nach.", {
+  stimmt: [["Weihnachten feiern wir im Dezember.", true, "Doch: Weihnachten ist am 24. und 25. Dezember.", "🎄"],
+    ["Sankt Martin ist im November.", true, "Doch: Sankt Martin ist am 11. November.", "🏮"],
+    ["Ostern ist im Herbst.", false, "Ostern ist im Frühling.", "🐣"],
+    ["Am Nikolaustag stellen viele Kinder ihre Stiefel vor die Tür.", true, "Doch: Der Nikolaustag ist am 6. Dezember.", "🥾"],
+    ["Fasching feiern wir im Sommer.", false, "Fasching ist im Winter, meistens im Februar.", "🎭"],
+    ["Silvester ist der letzte Tag im Jahr.", true, "Doch: Silvester ist am 31. Dezember.", "🎆"],
+    ["Mein Geburtstag ist jedes Jahr an einem anderen Datum.", false, "Mein Geburtstag ist jedes Jahr am selben Datum.", "🎂"]],
+  reihen: [["Leg die Feste der Reihe nach, wie sie nach dem Sommer kommen.", [["🏮", "Sankt Martin"], ["🥾", "Nikolaus"], ["🎄", "Weihnachten"], ["🎆", "Silvester"]], "Welches Fest kommt im November?"],
+    ["Leg die Feste der Reihe nach, wie sie im Jahr kommen.", [["🎆", "Neujahr"], ["🎭", "Fasching"], ["🐣", "Ostern"], ["🏮", "Sankt Martin"]]]],
+  raus: [[[["🎄", "Christbaum"], ["⭐", "Stern"], ["🎁", "Geschenk"], ["🐣", "Osterküken"]], 3, "Drei gehören zu einem Fest im Winter."],
+    [[["🏮", "Laterne"], ["🐴", "Pferd"], ["🧥", "Mantel teilen"], ["🎃", "Kürbis"]], 3, "Drei gehören zu Sankt Martin."]],
+  zeigen: ["Im Jahr gibt es viele Feste.", "Jedes Fest hat seine Zeit im Jahr.", "Sankt Martin ist im November, Weihnachten im Dezember.", "Ostern feiern wir im Frühling."],
+  merkheft: "Jedes Fest kommt jedes Jahr zu seiner Zeit wieder." });
+
+wissen("h_wuensche", "laden", "hilde", "Needs and wishes, buying things and pocket money",
+  "Was brauchst du wirklich, und was wünschst du dir nur? Sortier mit mir.", {
+  koerbe: { brauchen: ["🏠 Das brauche ich", "Ohne das geht es nicht gut."], wunsch: ["🌟 Das wünsche ich mir", "Das ist schön, aber es geht auch ohne."] },
+  dinge: [["🍞", "Brot", "brauchen", "essen muss jeder"], ["💧", "Wasser", "brauchen", "trinken muss jeder"], ["🧥", "Winterjacke", "brauchen", "hält warm"],
+    ["🛏️", "Bett", "brauchen", "zum Schlafen"], ["🎮", "Spielkonsole", "wunsch", "macht Spaß"], ["🧸", "neues Kuscheltier", "wunsch", "ich habe schon eins"],
+    ["🍭", "Lutscher", "wunsch", "nur zum Naschen"], ["🛴", "Roller", "wunsch", "zum Spielen"]],
+  sortiere: "Was brauchst du wirklich, und was wünschst du dir nur? Zieh jedes Ding in den richtigen Korb.", h1: "Geht es ohne das Ding auch?", lob: "Du hast bei jedem Ding gefragt: Brauche ich das wirklich?",
+  stimmt: [["Mit Taschengeld kann ich selbst entscheiden, was ich kaufe.", true, "Doch: Das Taschengeld gehört mir.", "🪙"],
+    ["Wenn ich spare, kann ich mir später etwas Größeres kaufen.", true, "Doch: Wenn ich spare, kommt immer mehr zusammen.", "🐷"],
+    ["Alles, was ich mir wünsche, brauche ich auch.", false, "Viele Wünsche sind schön, aber ich brauche sie nicht.", "🌟"],
+    ["Ist mein Geld ausgegeben, ist es weg.", true, "Doch: Dann muss ich warten, bis ich wieder welches habe.", "👛"]],
+  zeigen: ["Manche Dinge braucht jeder: Essen, Trinken, ein warmes Zuhause.", "Andere Dinge wünsche ich mir nur.", "Mit meinem Taschengeld entscheide ich selbst.", "Wenn ich spare, kann ich später mehr kaufen."],
+  merkheft: "Was ich brauche, muss sein, und ohne einen Wunsch geht es auch." });
+
+wissen("h_zaehne_aufbau", "cafe", "otto", "Teeth: milk teeth, permanent teeth, kinds of teeth",
+  "Weißt du, welche Zähne was tun? Sortier mit mir.", {
+  koerbe: { schneiden: ["🔪 Schneidezähne: abbeißen", "Vorne beißen die Schneidezähne ab."], eck: ["🦷 Eckzähne: festhalten", "Die spitzen Eckzähne halten fest."], backen: ["🫓 Backenzähne: kauen", "Hinten mahlen die Backenzähne alles klein."] },
+  dinge: [["🍎", "vom Apfel abbeißen", "schneiden", "vorne"], ["🥪", "ein Stück Brot abbeißen", "schneiden", "vorne"], ["🍖", "Fleisch festhalten", "eck", "spitz"],
+    ["🥨", "eine Brezel festhalten", "eck", "spitz"], ["🥜", "Nüsse klein kauen", "backen", "hinten"], ["🥕", "Karotte zermahlen", "backen", "hinten"]],
+  sortiere: "Welcher Zahn macht das? Zieh jede Karte zu den richtigen Zähnen.", h1: "Wo im Mund passiert das?", lob: "Du hast überlegt, wo im Mund die Arbeit passiert.",
+  stimmt: [["Kinder haben zuerst Milchzähne.", true, "Doch: Zuerst wachsen die Milchzähne.", "🦷"],
+    ["Wackelt ein Milchzahn, wächst darunter ein neuer Zahn.", true, "Doch: Der bleibende Zahn schiebt den Milchzahn heraus.", "🦷"],
+    ["Die bleibenden Zähne fallen auch wieder aus und wachsen nach.", false, "Bleibende Zähne wachsen nicht noch einmal nach.", "🦷"],
+    ["Vorne im Mund sind die Backenzähne.", false, "Vorne sind die Schneidezähne, die Backenzähne sind hinten.", "😁"],
+    ["Ein Kind hat 20 Milchzähne.", true, "Doch: Ein Milchgebiss hat 20 Zähne.", "😁"]],
+  raus: [[[["🦷", "Schneidezahn"], ["🦷", "Eckzahn"], ["🦷", "Backenzahn"], ["👅", "Zunge"]], 3, "Drei sind Zähne."]],
+  zeigen: ["Zuerst haben Kinder 20 Milchzähne.", "Ab etwa sechs Jahren wackeln sie, und bleibende Zähne wachsen nach.", "Vorne beißen die Schneidezähne ab, die Eckzähne halten fest.", "Hinten kauen die Backenzähne alles klein."],
+  merkheft: "Schneidezähne beißen ab, Eckzähne halten fest, Backenzähne kauen." });
+
+wissen("h_zaehne_pflege", "cafe", "otto", "Caring for teeth and food that is good for teeth",
+  "Was ist gut für deine Zähne? Sortier mit mir.", {
+  koerbe: { gut: ["😁 Gut für die Zähne", "Das schadet den Zähnen nicht."], schlecht: ["🍬 Schlecht für die Zähne", "Viel Zucker macht Löcher in die Zähne."] },
+  dinge: [["🥕", "Karotte", "gut", "knackig, ohne Zucker"], ["🧀", "Käse", "gut", "ohne Zucker"], ["💧", "Wasser", "gut", "ohne Zucker"], ["🍎", "Apfel", "gut", "knackig"],
+    ["🍬", "Bonbon", "schlecht", "voller Zucker"], ["🥤", "Limo", "schlecht", "voller Zucker"], ["🍫", "Schokolade", "schlecht", "voller Zucker"], ["🍭", "Lutscher", "schlecht", "klebt am Zahn"]],
+  sortiere: "Was ist gut für die Zähne, was nicht? Zieh alles in den richtigen Korb.", h1: "Ist viel Zucker darin?", lob: "Du hast an den Zucker gedacht.",
+  reihen: [["So putze ich meine Zähne.", [["🪥", "Zahnpasta auf die Bürste"], ["🫓", "Kauflächen putzen"], ["😁", "Außen und innen putzen"], ["💧", "Mund ausspülen"]], "Was kommt zuerst auf die Zahnbürste?"]],
+  stimmt: [["Ich putze meine Zähne morgens und abends.", true, "Doch: Zweimal am Tag putzen hält die Zähne gesund.", "🪥"],
+    ["Ich putze nur eine Minute lang.", false, "Ich putze zwei bis drei Minuten lang.", "⏱️"],
+    ["Zweimal im Jahr gehe ich zur Zahnärztin.", true, "Doch: Sie schaut, ob alles gesund ist.", "🦷"],
+    ["Nach dem Zähneputzen am Abend esse ich noch Süßes.", false, "Nach dem Putzen am Abend esse ich nichts mehr.", "🍬"]],
+  zeigen: ["Zucker macht Löcher in die Zähne.", "Ich putze morgens und abends, zwei bis drei Minuten lang.", "Erst die Kauflächen, dann außen und innen.", "Zweimal im Jahr schaut die Zahnärztin nach."],
+  merkheft: "Zweimal am Tag putzen, wenig Zucker, zweimal im Jahr zur Zahnärztin." });
+
+wissen("h_hygiene", "puppen", "katze", "Body care and staying healthy (washing hands, colds)",
+  "Deine Puppen waschen sich die Hände. Leg die Bilder der Reihe nach.", {
+  reihen: [["So wasche ich meine Hände.", [["💧", "Hände nass machen"], ["🧼", "Einseifen"], ["🚿", "Abspülen"], ["🧻", "Abtrocknen"]], "Was machst du ganz am Anfang?"],
+    ["Ich bin erkältet. Was tue ich?", [["🤧", "Die Nase läuft"], ["🧻", "Ins Taschentuch schnäuzen"], ["🗑️", "Taschentuch wegwerfen"], ["🧼", "Hände waschen"]]]],
+  stimmt: [["Vor dem Essen wasche ich mir die Hände.", true, "Doch: So kommen keine Keime ins Essen.", "🧼"],
+    ["Ich niese in die Armbeuge.", true, "Doch: So fliegen die Keime nicht zu anderen.", "🤧"],
+    ["Nach dem Klo muss ich mir die Hände nicht waschen.", false, "Nach dem Klo wasche ich mir immer die Hände.", "🚽"],
+    ["Ein Taschentuch benutze ich nur einmal.", true, "Doch: Dann kommt es in den Müll.", "🗑️"],
+    ["Wenn ich krank bin, ruhe ich mich aus.", true, "Doch: Ausruhen hilft dem Körper beim Gesundwerden.", "🛌"],
+    ["Ich wasche mir die Hände ganz schnell ohne Seife.", false, "Ich nehme Seife und wasche gründlich.", "🧼"]],
+  raus: [[[["🧼", "Seife"], ["🪥", "Zahnbürste"], ["🧴", "Duschgel"], ["🍰", "Kuchen"]], 3, "Drei brauche ich zum Waschen und Putzen."]],
+  zeigen: ["An den Händen sind Keime, die man nicht sieht.", "Vor dem Essen und nach dem Klo wasche ich die Hände mit Seife.", "Ich niese und huste in die Armbeuge.", "Wenn ich krank bin, ruhe ich mich aus."],
+  merkheft: "Hände waschen mit Seife, in die Armbeuge niesen." });
+
+wissen("h_ernaehrung", "cafe", "otto", "Food pyramid, food groups, exercise and feeling well",
+  "Was isst du oft, was nur selten? Sortier mit mir.", {
+  koerbe: { viel: ["🟢 Viel", "Davon darf ich viel essen und trinken."], mittel: ["🟡 Mittel", "Davon esse ich jeden Tag ein bisschen."], wenig: ["🔴 Wenig", "Davon esse ich nur selten und wenig."] },
+  dinge: [["💧", "Wasser", "viel", "durstlöschend"], ["🥦", "Gemüse", "viel", "voller Vitamine"], ["🍎", "Obst", "viel", "voller Vitamine"], ["🍞", "Vollkornbrot", "viel", "macht lange satt"],
+    ["🥛", "Milch", "mittel", "für starke Knochen"], ["🧀", "Käse", "mittel", "für starke Knochen"], ["🍫", "Schokolade", "wenig", "viel Zucker"], ["🍟", "Pommes", "wenig", "viel Fett"], ["🍬", "Gummibärchen", "wenig", "viel Zucker"]],
+  sortiere: "Was isst du viel, was mittel, was wenig? Zieh alles in den richtigen Korb.", h1: "Ist viel Zucker oder Fett darin?", lob: "Du hast an Zucker, Fett und Vitamine gedacht.",
+  stimmt: [["Wasser ist das beste Getränk.", true, "Doch: Wasser löscht den Durst ohne Zucker.", "💧"],
+    ["Süßes esse ich jeden Tag ganz viel.", false, "Süßes esse ich nur selten und wenig.", "🍬"],
+    ["Bewegung tut meinem Körper gut.", true, "Doch: Toben, Radeln und Laufen halten fit.", "🤸"],
+    ["Obst und Gemüse esse ich jeden Tag.", true, "Doch: Am besten fünf Hände voll am Tag.", "🥕"]],
+  raus: [[[["🍎", "Apfel"], ["🍌", "Banane"], ["🍐", "Birne"], ["🥕", "Karotte"]], 3, "Drei sind Obst."], [[["🥦", "Brokkoli"], ["🥕", "Karotte"], ["🥒", "Gurke"], ["🍰", "Kuchen"]], 3, "Drei sind Gemüse."]],
+  zeigen: ["Unten in der Ernährungspyramide steht, wovon ich viel esse.", "Viel Wasser, viel Obst, Gemüse und Brot.", "Milch und Käse gibt es jeden Tag ein bisschen.", "Süßes und Fettiges steht ganz oben: nur wenig davon."],
+  merkheft: "Ich trinke viel, esse viel Obst und Gemüse, wenig Süßes und bewege mich viel." });
+
+wissen("h_pausenbrot", "laden", "hilde", "A healthy breakfast and break snack",
+  "Was packst du in deine Brotzeitbox? Sortier mit mir.", {
+  koerbe: { rein: ["🍱 In die Brotzeitbox", "Das macht lange satt und fit."], nein: ["🚫 Lieber nicht", "Das macht nur kurz satt oder hat viel Zucker."] },
+  dinge: [["🥪", "Vollkornbrot mit Käse", "rein", "macht lange satt"], ["🥒", "Gurkenstücke", "rein", "knackig, frisch"], ["🍎", "Apfelschnitze", "rein", "Obst"], ["💧", "Wasserflasche", "rein", "ohne Zucker"],
+    ["🍩", "Donut", "nein", "viel Zucker und Fett"], ["🥤", "Limo", "nein", "viel Zucker"], ["🍫", "Schokoriegel", "nein", "viel Zucker"], ["🍪", "Kekse", "nein", "viel Zucker"]],
+  sortiere: "Was kommt in die Brotzeitbox? Zieh jedes Ding in den richtigen Korb.", h1: "Macht es lange satt, ohne viel Zucker?", lob: "Du hast eine Brotzeit gepackt, die lange satt macht.",
+  raus: [[[["🥪", "Brot"], ["🍎", "Apfel"], ["🥕", "Karotte"], ["🍭", "Lutscher"]], 3, "Drei passen in eine gesunde Brotzeit."], [[["💧", "Wasser"], ["🫖", "Tee ohne Zucker"], ["🥛", "Milch"], ["🥤", "Limo"]], 3, "Drei sind Getränke ohne viel Zucker."]],
+  stimmt: [["Ein gutes Frühstück gibt mir Kraft für die Schule.", true, "Doch: Mit leerem Bauch lernt es sich schwer.", "🥣"],
+    ["In die Brotzeitbox gehört nur Süßes.", false, "In die Brotzeitbox gehören Brot, Obst und Gemüse.", "🍱"]],
+  zeigen: ["Ein gutes Frühstück gibt Kraft für den Vormittag.", "In die Brotzeitbox kommt Vollkornbrot, Obst oder Gemüse.", "Dazu trinke ich Wasser oder Tee.", "Süßes macht nur kurz satt."],
+  merkheft: "In meine Brotzeitbox kommen Vollkornbrot, Obst oder Gemüse und Wasser." });
+
+wissen("h_gefuehle", "puppen", "katze", "Recognising and showing feelings; what makes me special",
+  "Deine Puppen haben Gefühle. Welche fühlen sich gut an? Sortier mit mir.", {
+  koerbe: { gut: ["😊 Fühlt sich gut an", "Diese Gefühle sind angenehm."], schwer: ["😟 Fühlt sich schwer an", "Diese Gefühle sind unangenehm, und das ist in Ordnung."] },
+  dinge: [["😊", "froh", "gut", "lacht"], ["🥰", "verliebt", "gut", "warm ums Herz"], ["😌", "ruhig", "gut", "entspannt"], ["🤩", "begeistert", "gut", "strahlt"],
+    ["😢", "traurig", "schwer", "weint"], ["😠", "wütend", "schwer", "ballt die Fäuste"], ["😨", "ängstlich", "schwer", "zittert"], ["😒", "eifersüchtig", "schwer", "will es auch"]],
+  sortiere: "Welche Gefühle fühlen sich gut an, welche schwer? Zieh jedes Gesicht in den richtigen Korb.", h1: "Wie fühlt sich das im Bauch an?", lob: "Du hast in dich hineingespürt.",
+  stimmt: [["Alle Menschen sind manchmal traurig.", true, "Doch: Traurig sein gehört zum Leben.", "😢"],
+    ["Über Gefühle darf man reden.", true, "Doch: Reden hilft oft.", "🗣️"],
+    ["Wenn jemand weint, lache ich ihn aus.", false, "Wenn jemand weint, frage ich, was los ist.", "😢"],
+    ["Jeder Mensch ist anders, und das ist gut so.", true, "Doch: Jeder kann etwas besonders gut.", "🌈"],
+    ["Ein Junge darf nicht weinen.", false, "Jeder darf weinen, Jungen und Mädchen.", "😢"]],
+  raus: [[[["😊", "froh"], ["😢", "traurig"], ["😠", "wütend"], ["🍕", "Pizza"]], 3, "Drei sind Gefühle."]],
+  zeigen: ["Gefühle zeigen sich im Gesicht und im Körper.", "Froh und ruhig fühlt sich gut an.", "Traurig, wütend oder ängstlich fühlt sich schwer an.", "Alle Gefühle sind in Ordnung, und ich kann darüber reden."],
+  merkheft: "Alle Gefühle sind erlaubt, und ich kann sagen, wie es mir geht." });
+
+wissen("h_wut", "puppen", "katze", "Dealing with anger and quarrels: the stop rule, compromises",
+  "Deine Puppen streiten. Was hilft? Stimmt das? „Ich sage laut Stopp!“", {
+  reihen: [["Die Stopp-Regel: Was tue ich, wenn mich jemand ärgert?", [["✋", "Laut Stopp sagen"], ["🚶", "Weggehen"], ["🙋", "Erwachsene holen"], ["🤝", "Später darüber reden"]], "Was sagst du zuerst?"],
+    ["Wenn ich wütend bin:", [["😠", "Ich merke die Wut"], ["🌬️", "Tief durchatmen"], ["😌", "Ich werde ruhiger"], ["🗣️", "Sagen, was mich ärgert"]]]],
+  stimmt: [["Wenn jemand Stopp sagt, höre ich sofort auf.", true, "Doch: Stopp heißt Stopp.", "✋"],
+    ["Wenn ich wütend bin, haue ich zu.", false, "Ich haue nie. Ich atme durch und sage, was mich ärgert.", "😠"],
+    ["Bei einem Streit können beide ein bisschen nachgeben.", true, "Doch: Das heißt Kompromiss.", "🤝"],
+    ["Tief durchatmen hilft gegen die Wut.", true, "Doch: Dann wird die Wut kleiner.", "🌬️"],
+    ["Wer am lautesten schreit, hat recht.", false, "Lautes Schreien macht einen Streit nur größer.", "📢"]],
+  raus: [[[["🌬️", "Durchatmen"], ["✋", "Stopp sagen"], ["🤝", "Sich vertragen"], ["👊", "Hauen"]], 3, "Drei helfen bei einem Streit."]],
+  zeigen: ["Wut ist ein starkes Gefühl.", "Wenn mich jemand ärgert, sage ich laut: Stopp!", "Wer Stopp hört, hört sofort auf.", "Bei einem Streit können beide ein bisschen nachgeben."],
+  merkheft: "Stopp heißt Stopp, und bei Wut atme ich durch und rede." });
+
+wissen("h_luft_da", "see", "fridolin", "Air is not nothing: air takes up space (experiments)",
+  "Ich mache Versuche mit Luft. Stimmt das? „Ein leeres Glas ist gar nicht leer.“", {
+  stimmt: [["Ein leeres Glas ist voller Luft.", true, "Doch: Im leeren Glas ist Luft.", "🥛"],
+    ["Ich drücke ein Glas umgedreht ins Wasser. Das Papier darin bleibt trocken.", true, "Doch: Die Luft im Glas hält das Wasser draußen.", "📄"],
+    ["Luft kann man sehen.", false, "Luft ist unsichtbar, aber sie ist da.", "👀"],
+    ["Im Luftballon ist Luft.", true, "Doch: Die Luft macht den Ballon dick.", "🎈"],
+    ["Wenn ich eine Flasche unter Wasser öffne, steigen Blasen auf.", true, "Doch: Die Luft kommt heraus.", "🫧"],
+    ["Luft braucht keinen Platz.", false, "Luft braucht Platz, sie füllt jeden Raum.", "📦"]],
+  raus: [[[["🎈", "Luftballon"], ["🛟", "Schwimmring"], ["⚽", "Fußball"], ["🪨", "Stein"]], 3, "In drei steckt Luft."], [[["🫧", "Blasen"], ["💨", "Wind"], ["🎐", "Windspiel"], ["🧱", "Ziegel"]], 3, "Drei zeigen, dass Luft da ist."]],
+  zeigen: ["Luft kann ich nicht sehen, aber sie ist überall.", "Ein leeres Glas ist voller Luft.", "Drücke ich es umgedreht ins Wasser, bleibt das Papier darin trocken.", "Die Luft braucht Platz und hält das Wasser draußen."],
+  merkheft: "Luft ist unsichtbar, aber sie ist da und braucht Platz." });
+
+wissen("h_luft_wirkung", "huegel", "mila", "Air slows things down and moves them (wind, parachute, windmill)",
+  "Auf meinem Hügel weht der Wind. Was bewegt er? Tipp auf das, was nicht dazupasst.", {
+  raus: [[[["🪁", "Drachen"], ["⛵", "Segelboot"], ["🌬️", "Windrad"], ["🪨", "Stein"]], 3, "Drei bewegt der Wind."],
+    [[["🪂", "Fallschirm"], ["🍂", "Blatt"], ["🪶", "Feder"], ["🔨", "Hammer"]], 3, "Drei schweben langsam herunter."]],
+  stimmt: [["Ein Fallschirm fällt langsam, weil die Luft ihn bremst.", true, "Doch: Die Luft drückt gegen den großen Schirm.", "🪂"],
+    ["Ein Blatt Papier fällt schneller als eine Papierkugel.", false, "Das flache Blatt wird mehr gebremst, es fällt langsamer.", "📄"],
+    ["Wind ist Luft, die sich bewegt.", true, "Doch: Wind ist bewegte Luft.", "💨"],
+    ["Ein Windrad dreht sich auch ohne Wind.", false, "Ein Windrad braucht Wind zum Drehen.", "🌬️"],
+    ["Mit einem Föhn kann ich Wind machen.", true, "Doch: Der Föhn bläst Luft.", "💨"]],
+  koerbe: { wind: ["💨 Der Wind bewegt es", "Bewegte Luft schiebt es an."], bremst: ["🪂 Die Luft bremst es", "Die Luft macht es langsamer."] },
+  dinge: [["🪁", "Drachen steigt", "wind", "fliegt hoch"], ["⛵", "Segelboot fährt", "wind", "Segel"], ["🌬️", "Windrad dreht sich", "wind", "Flügel"],
+    ["🪂", "Fallschirm schwebt", "bremst", "großer Schirm"], ["🪶", "Feder sinkt langsam", "bremst", "leicht und flach"], ["🍂", "Blatt segelt herunter", "bremst", "flach"]],
+  sortiere: "Schiebt der Wind, oder bremst die Luft? Zieh jedes Bild in den richtigen Korb.", h1: "Geht es nach oben und weiter, oder langsam herunter?", lob: "Du hast genau überlegt, was die Luft macht.",
+  zeigen: ["Bewegte Luft heißt Wind.", "Der Wind schiebt Drachen, Segelboote und Windräder an.", "Luft kann auch bremsen.", "Ein Fallschirm fällt langsam, weil die Luft gegen ihn drückt."],
+  merkheft: "Wind ist bewegte Luft, und Luft kann bewegen und bremsen." });
+
+wissen("h_luft_schutz", "garten", "lotte", "Air as a basis of life, air pollution",
+  "Was macht die Luft sauber, was macht sie schmutzig? Sortier mit mir.", {
+  koerbe: { sauber: ["🌳 Gut für die Luft", "Das hält die Luft sauber."], schmutzig: ["🏭 Schlecht für die Luft", "Das macht die Luft schmutzig."] },
+  dinge: [["🌳", "Bäume pflanzen", "sauber", "Bäume machen frische Luft"], ["🚲", "Rad fahren", "sauber", "keine Abgase"], ["🚶", "zu Fuß gehen", "sauber", "keine Abgase"], ["🚋", "Straßenbahn fahren", "sauber", "viele fahren zusammen"],
+    ["🚗", "jeden Weg mit dem Auto", "schmutzig", "Abgase"], ["🏭", "Rauch aus dem Schornstein", "schmutzig", "Rauch"], ["🔥", "Müll verbrennen", "schmutzig", "Rauch"], ["🚬", "Rauchen", "schmutzig", "Rauch"]],
+  sortiere: "Was ist gut für die Luft, was nicht? Zieh alles in den richtigen Korb.", h1: "Kommt dabei Rauch oder Abgas heraus?", lob: "Du hast an Rauch und Abgase gedacht.",
+  stimmt: [["Menschen, Tiere und Pflanzen brauchen Luft zum Leben.", true, "Doch: Ohne Luft kann niemand leben.", "🫁"],
+    ["Bäume machen frische Luft.", true, "Doch: Bäume geben Sauerstoff ab.", "🌳"],
+    ["Autoabgase sind gut für die Luft.", false, "Abgase machen die Luft schmutzig.", "🚗"],
+    ["Wenn ich mit dem Rad fahre, bleibt die Luft sauberer.", true, "Doch: Das Rad hat keine Abgase.", "🚲"]],
+  zeigen: ["Menschen, Tiere und Pflanzen brauchen Luft zum Atmen.", "Bäume machen frische Luft.", "Abgase und Rauch machen die Luft schmutzig.", "Rad fahren und zu Fuß gehen schützt die Luft."],
+  merkheft: "Alle brauchen saubere Luft, Bäume helfen und Abgase schaden." });
+
+wissen("h_wetter", "huegel", "mila", "Observing and measuring weather (thermometer, wind, rain), thunderstorm rules",
+  "Auf meinem Hügel beobachte ich das Wetter. Stimmt das? „Das Thermometer misst, wie warm es ist.“", {
+  stimmt: [["Das Thermometer misst, wie warm es ist.", true, "Doch: Es zeigt die Temperatur in Grad.", "🌡️"],
+    ["Bei Gewitter stelle ich mich unter einen einzelnen Baum.", false, "Bei Gewitter gehe ich in ein Haus, nie unter einen einzelnen Baum.", "⛈️"],
+    ["Bei Gewitter gehe ich aus dem Wasser.", true, "Doch: Im Wasser ist es bei Gewitter gefährlich.", "🏊"],
+    ["Regen, Schnee und Hagel heißen zusammen Niederschlag.", true, "Doch: Alles, was vom Himmel fällt, ist Niederschlag.", "🌧️"],
+    ["Eine Windfahne zeigt, woher der Wind weht.", true, "Doch: Sie dreht sich mit dem Wind.", "🚩"],
+    ["Bei 30 Grad ziehe ich eine dicke Winterjacke an.", false, "Bei 30 Grad ist es heiß, da reicht ein T-Shirt.", "🧥"]],
+  raus: [[[["🌧️", "Regen"], ["❄️", "Schnee"], ["🧊", "Hagel"], ["☀️", "Sonne"]], 3, "Drei fallen vom Himmel."],
+    [[["🌡️", "Thermometer"], ["🚩", "Windfahne"], ["🪣", "Regenmesser"], ["🎸", "Gitarre"]], 3, "Mit dreien messe ich das Wetter."]],
+  koerbe: { warm: ["☀️ Warmes Wetter", "Dafür ist es warm genug."], kalt: ["❄️ Kaltes Wetter", "Das passt, wenn es kalt ist."] },
+  dinge: [["🩳", "kurze Hose", "warm", "luftig"], ["🧢", "Sonnenhut", "warm", "Schatten"], ["🧴", "Sonnencreme", "warm", "Sonnenschutz"],
+    ["🧤", "Handschuhe", "kalt", "warme Hände"], ["🧣", "Schal", "kalt", "warmer Hals"], ["🛷", "Schlitten", "kalt", "Schnee"]],
+  sortiere: "Was passt zu warmem, was zu kaltem Wetter? Zieh alles in den richtigen Korb.", h1: "Brauche ich das, wenn es kalt ist?", lob: "Du hast an das Wetter gedacht.",
+  zeigen: ["Wetter kann man beobachten und messen.", "Das Thermometer misst die Temperatur.", "Die Windfahne zeigt den Wind, der Regenmesser den Regen.", "Bei Gewitter gehe ich schnell in ein Haus."],
+  merkheft: "Das Thermometer misst die Temperatur, und bei Gewitter gehe ich ins Haus." });
+
+wissen("h_stoffe", "see", "fridolin", "Materials and their properties (floats, dissolves, can be shaped)",
+  "Was schwimmt auf meinem See, was geht unter? Sortier mit mir.", {
+  koerbe: { schwimmt: ["🛶 Schwimmt", "Das bleibt oben auf dem Wasser."], sinkt: ["⚓ Geht unter", "Das sinkt auf den Grund."] },
+  dinge: [["🪵", "Holz", "schwimmt", "leicht"], ["🍾", "Korken", "schwimmt", "sehr leicht"], ["🦆", "Gummiente", "schwimmt", "Luft darin"], ["🍂", "Blatt", "schwimmt", "leicht und flach"],
+    ["🪨", "Stein", "sinkt", "schwer"], ["🔑", "Schlüssel", "sinkt", "aus Metall"], ["🪙", "Münze", "sinkt", "aus Metall"], ["🔩", "Schraube", "sinkt", "aus Metall"]],
+  sortiere: "Was schwimmt, was geht unter? Zieh jedes Ding in den richtigen Korb.", h1: "Woraus ist das Ding?", lob: "Du hast überlegt, woraus jedes Ding ist.",
+  stimmt: [["Zucker löst sich in warmem Tee auf.", true, "Doch: Dann sieht man ihn nicht mehr, aber man schmeckt ihn.", "🍵"],
+    ["Ein Stein löst sich im Wasser auf.", false, "Ein Stein bleibt ein Stein, auch im Wasser.", "🪨"],
+    ["Knete kann ich in jede Form drücken.", true, "Doch: Knete ist formbar.", "🟣"],
+    ["Ein Nagel aus Eisen schwimmt.", false, "Ein Nagel aus Eisen geht unter.", "📌"],
+    ["Salz löst sich in Wasser auf.", true, "Doch: Das Wasser schmeckt dann salzig.", "🧂"]],
+  raus: [[[["🍬", "Zucker"], ["🧂", "Salz"], ["🍯", "Honig"], ["🪨", "Kieselstein"]], 3, "Drei lösen sich im Wasser auf."]],
+  zeigen: ["Dinge sind aus verschiedenen Stoffen.", "Holz und Kork schwimmen, Steine und Metall gehen unter.", "Zucker und Salz lösen sich in Wasser auf.", "Knete und Ton kann ich formen."],
+  merkheft: "Holz schwimmt, Metall sinkt, und Zucker löst sich im Wasser auf." });
+
+wissen("h_muell", "laden", "hilde", "Sorting, avoiding and reusing waste",
+  "Hilfst du mir beim Aufräumen? Was kommt in welche Tonne?", {
+  dinge: [["🍌", "Bananenschale", "bio", "aus der Natur"], ["📰", "Zeitung", "papier", "aus Papier"], ["🥤", "Plastikbecher", "wert", "aus Plastik"], ["🥫", "Dose", "wert", "aus Metall"],
+    ["📦", "Karton", "papier", "aus Pappe"], ["🍎", "Apfelrest", "bio", "aus der Natur"], ["🩹", "Pflaster", "rest", "schmutzig, gemischt"], ["🥚", "Eierschale", "bio", "aus der Natur"],
+    ["🧃", "Saftkarton", "wert", "Verpackung"], ["🧽", "alter Schwamm", "rest", "gemischt"]],
+  sortiere: "Hilfst du mir beim Aufräumen? Was kommt in welche Tonne?",
+  stimmt: [["Eine Stofftasche kann ich viele Male benutzen.", true, "Doch: So spare ich Plastiktüten.", "👜"],
+    ["Wenig Verpackung macht wenig Müll.", true, "Doch: Am besten ist Müll, der gar nicht entsteht.", "📦"],
+    ["Altes Papier wird zu neuem Papier.", true, "Doch: Aus Altpapier wird neues Papier gemacht.", "♻️"],
+    ["Alles kommt in eine Tonne.", false, "Ich trenne den Müll: Papier, Bio, Wertstoffe, Restmüll.", "🗑️"],
+    ["Eine Trinkflasche ist besser als viele Becher.", true, "Doch: Die Flasche kann ich immer wieder füllen.", "🍼"]],
+  zeigen: ["Müll trenne ich: Papier, Bio, Wertstoffe und Restmüll.", "Aus getrenntem Müll werden neue Dinge gemacht.", "Noch besser ist es, Müll zu vermeiden.", "Eine Stofftasche und eine Trinkflasche helfen dabei."],
+  merkheft: "Müll vermeiden, trennen und wiederverwerten." });
+
+wissen("h_wiese_pflanzen", "garten", "lotte", "Identifying meadow plants; plant parts (root, stem, leaf, blossom)",
+  "Weißt du, wie die Teile meiner Blume heißen? Zieh die Wörter an ihren Platz.", {
+  bild: [["bluete", "Blüte", 8, 20, "bunt, duftet"], ["blatt", "Blatt", 210, 170, "grün und flach"], ["stengel", "Stängel", 8, 200, "trägt die Blüte"], ["wurzel", "Wurzel", 210, 310, "steckt in der Erde"]],
+  raus: [[[["🌼", "Gänseblümchen"], ["🌻", "Löwenzahn"], ["☘️", "Klee"], ["🌵", "Kaktus"]], 3, "Drei wachsen auf unserer Wiese."],
+    [[["🌱", "Wurzel"], ["🍃", "Blatt"], ["🌸", "Blüte"], ["🐛", "Raupe"]], 3, "Drei sind Teile einer Pflanze."]],
+  stimmt: [["Die Wurzel holt Wasser aus der Erde.", true, "Doch: Die Wurzel trinkt für die Pflanze.", "🌱"],
+    ["Der Stängel trägt die Blüte.", true, "Doch: Er hält die Blüte nach oben.", "🌷"],
+    ["Löwenzahn hat gelbe Blüten.", true, "Doch: Später wird daraus die Pusteblume.", "🌼"],
+    ["Die Blüte steckt in der Erde.", false, "In der Erde steckt die Wurzel, die Blüte ist oben.", "🌸"]],
+  zeigen: ["Jede Pflanze hat Wurzel, Stängel, Blätter und Blüte.", "Die Wurzel hält die Pflanze fest und holt Wasser.", "Der Stängel trägt Blätter und Blüte.", "Auf unserer Wiese wachsen Löwenzahn, Gänseblümchen und Klee."],
+  merkheft: "Wurzel, Stängel, Blatt, Blüte." });
+
+wissen("h_fahrrad", "post", "emil", "The roadworthy bike, helmet, reflectors",
+  "Ich prüfe mein Postrad. Was muss an einem sicheren Fahrrad sein? Sortier mit mir.", {
+  koerbe: { muss: ["✅ Muss dran sein", "Ohne das ist das Fahrrad nicht sicher."], kann: ["🎀 Kann dran sein", "Schön, aber nicht nötig für die Sicherheit."] },
+  dinge: [["🔔", "Klingel", "muss", "damit man mich hört"], ["💡", "Licht vorne", "muss", "damit ich sehe"], ["🔴", "Rücklicht", "muss", "damit man mich sieht"], ["🛑", "zwei Bremsen", "muss", "zum Anhalten"],
+    ["🟡", "Reflektoren", "muss", "leuchten im Dunkeln"], ["🧺", "Korb", "kann", "zum Tragen"], ["🎀", "Wimpel", "kann", "zum Schmücken"], ["🧴", "Flaschenhalter", "kann", "für Getränke"]],
+  sortiere: "Was muss an einem sicheren Fahrrad sein? Zieh jedes Teil in den richtigen Korb.", h1: "Brauche ich das, damit ich sicher fahre?", lob: "Du hast an die Sicherheit gedacht.",
+  stimmt: [["Beim Radfahren trage ich immer einen Helm.", true, "Doch: Der Helm schützt meinen Kopf.", "⛑️"],
+    ["Der Helm muss fest sitzen.", true, "Doch: Ein wackliger Helm schützt nicht.", "⛑️"],
+    ["Im Dunkeln fahre ich ohne Licht.", false, "Im Dunkeln mache ich immer das Licht an.", "🌙"],
+    ["Reflektoren leuchten, wenn Licht auf sie fällt.", true, "Doch: So sehen mich die Autos.", "🟡"]],
+  raus: [[[["🔔", "Klingel"], ["💡", "Licht"], ["🛑", "Bremse"], ["🎈", "Luftballon"]], 3, "Drei machen das Fahrrad sicher."]],
+  zeigen: ["Ein sicheres Fahrrad hat zwei Bremsen und eine Klingel.", "Es hat Licht vorne und hinten und Reflektoren.", "Beim Fahren trage ich immer einen Helm.", "Der Helm muss fest sitzen."],
+  merkheft: "Bremsen, Klingel, Licht, Reflektoren und immer ein Helm." });
+
+wissen("h_samen", "garten", "lotte", "How plants spread (fliers, burrs, runners)",
+  "Wie verbreiten sich Pflanzen? Sortier mit mir.", {
+  koerbe: { wind: ["💨 Fliegen mit dem Wind", "Diese Samen sind leicht und haben Flügel oder Schirmchen."], fell: ["🐕 Haken sich ins Fell", "Diese Samen haben kleine Haken."], laeufer: ["🍓 Wachsen mit Ausläufern", "Die Pflanze schickt lange Triebe aus."] },
+  dinge: [["🌼", "Pusteblume", "wind", "Schirmchen"], ["🍁", "Ahorn", "wind", "Flügel wie ein Propeller"], ["🌾", "Gras", "wind", "leicht"],
+    ["🟤", "Klette", "fell", "kleine Haken"], ["🌿", "Labkraut", "fell", "klebt an der Hose"], ["🍓", "Erdbeere", "laeufer", "lange Triebe"], ["🍀", "Klee", "laeufer", "kriecht über den Boden"]],
+  sortiere: "Wie verbreiten sich diese Pflanzen? Zieh jede Pflanze in den richtigen Korb.", h1: "Hat der Samen Flügel, Schirmchen oder Haken, oder wächst ein langer Trieb?", lob: "Du hast dir angeschaut, wie jeder Samen gebaut ist.",
+  stimmt: [["Die Samen der Pusteblume fliegen mit dem Wind.", true, "Doch: Jeder Samen hat ein Schirmchen.", "🌼"],
+    ["Kletten bleiben im Fell von Tieren hängen.", true, "Doch: So reisen sie mit dem Tier.", "🐕"],
+    ["Ein Samen kann nicht reisen.", false, "Samen reisen mit dem Wind, mit Tieren oder mit Wasser.", "🌱"],
+    ["Vögel fressen Beeren und tragen die Samen weiter.", true, "Doch: So wächst die Pflanze woanders.", "🐦"]],
+  zeigen: ["Pflanzen können nicht laufen, aber ihre Samen reisen.", "Leichte Samen fliegen mit dem Wind.", "Kletten haken sich ins Fell von Tieren.", "Erdbeeren schicken Ausläufer, daraus wachsen neue Pflanzen."],
+  merkheft: "Pflanzen verbreiten sich mit dem Wind, mit Tieren oder mit Ausläufern." });
+
+wissen("h_biene", "garten", "lotte", "The honeybee: body, pollination, the colony",
+  "Bei mir summen die Bienen. Stimmt das? „Eine Biene hat sechs Beine.“", {
+  reihen: [["Wie wächst eine Biene heran?", [["🥚", "Ei"], ["🐛", "Larve"], ["🛌", "Puppe"], ["🐝", "Biene"]], "Was legt die Königin?"],
+    ["Wie wird Honig gemacht?", [["🌸", "Nektar sammeln"], ["🐝", "zum Stock fliegen"], ["🍯", "in die Waben füllen"], ["🫙", "Honig ernten"]]]],
+  stimmt: [["Eine Biene hat sechs Beine.", true, "Doch: Bienen sind Insekten, Insekten haben sechs Beine.", "🐝"],
+    ["Im Bienenvolk gibt es eine Königin.", true, "Doch: Nur die Königin legt Eier.", "👑"],
+    ["Bienen tragen Blütenstaub von Blüte zu Blüte.", true, "Doch: So werden die Blüten bestäubt.", "🌸"],
+    ["Bienen machen Honig aus Sand.", false, "Bienen machen Honig aus dem Nektar der Blüten.", "🍯"],
+    ["Eine Biene hat acht Beine.", false, "Eine Biene hat sechs Beine, acht Beine hat eine Spinne.", "🕷️"]],
+  raus: [[[["👑", "Königin"], ["🐝", "Arbeiterin"], ["🐝", "Drohne"], ["🐜", "Ameise"]], 3, "Drei leben im Bienenvolk."]],
+  zeigen: ["Die Honigbiene ist ein Insekt mit sechs Beinen.", "Im Bienenstock leben die Königin, die Arbeiterinnen und die Drohnen.", "Bienen sammeln Nektar und machen daraus Honig.", "Dabei tragen sie Blütenstaub von Blüte zu Blüte."],
+  merkheft: "Bienen bestäuben Blüten und machen Honig." });
+
+wissen("h_wiese_tiere", "huegel", "mila", "Meadow animals: how they fit their home and who eats whom",
+  "Auf meiner Wiese frisst einer den anderen. Leg die Bilder der Reihe nach.", {
+  reihen: [["Wer frisst wen? Fang beim Gras an.", [["🌿", "Gras"], ["🦗", "Heuschrecke"], ["🐸", "Frosch"], ["🐦", "Storch"]], "Was steht am Anfang, das Gras oder ein Tier?"],
+    ["Wer frisst wen? Fang bei der Pflanze an.", [["🍃", "Blatt"], ["🐛", "Raupe"], ["🐦", "Meise"], ["🦅", "Habicht"]]]],
+  stimmt: [["Der Maulwurf gräbt Gänge unter der Wiese.", true, "Doch: Mit seinen Schaufelhänden gräbt er.", "🕳️"],
+    ["Die Heuschrecke ist grün, damit sie im Gras gut versteckt ist.", true, "Doch: So sieht der Vogel sie nicht.", "🦗"],
+    ["Der Regenwurm lebt auf den Bäumen.", false, "Der Regenwurm lebt in der Erde.", "🪱"],
+    ["Ein Schmetterling war früher eine Raupe.", true, "Doch: Aus der Raupe wird ein Schmetterling.", "🦋"]],
+  raus: [[[["🦗", "Heuschrecke"], ["🐞", "Marienkäfer"], ["🦋", "Schmetterling"], ["🐟", "Fisch"]], 3, "Drei leben auf der Wiese."]],
+  zeigen: ["Auf der Wiese leben viele Tiere.", "Jedes Tier passt zu seinem Zuhause, zum Beispiel ist die Heuschrecke grün wie das Gras.", "Die Pflanzen sind Futter für kleine Tiere.", "Kleine Tiere sind Futter für größere Tiere."],
+  merkheft: "Die Heuschrecke frisst das Gras, der Frosch die Heuschrecke und der Storch den Frosch." });
+
+wissen("h_verkehrsregeln", "post", "emil", "Traffic rules and road signs; crossing safely",
+  "Ich trage die Post aus und gehe über die Straße. Stimmt das? „Bei Rot bleibe ich stehen.“", {
+  stimmt: [["Bei Rot bleibe ich stehen.", true, "Doch: Bei Rot warte ich, auch wenn kein Auto kommt.", "🚦"],
+    ["Am Zebrastreifen schaue ich erst nach links, dann nach rechts, dann wieder nach links.", true, "Doch: So sehe ich alle Autos.", "🦓"],
+    ["Zwischen parkenden Autos laufe ich schnell über die Straße.", false, "Zwischen parkenden Autos sehen mich die Fahrer nicht. Ich suche eine freie Stelle.", "🚗"],
+    ["Am Bordstein halte ich an.", true, "Doch: Am Bordstein bleibe ich zuerst stehen.", "🛑"],
+    ["Bei Grün renne ich ohne zu schauen los.", false, "Auch bei Grün schaue ich, ob die Autos halten.", "🚦"],
+    ["Ein Schulbus mit Warnblinklicht: Ich gehe vorsichtig.", true, "Doch: Dann steigen Kinder ein oder aus.", "🚌"]],
+  reihen: [["So gehe ich sicher über die Straße.", [["🛑", "Am Bordstein anhalten"], ["👈", "Nach links schauen"], ["👉", "Nach rechts schauen"], ["🚶", "Noch einmal links schauen, dann gehen"]], "Was tust du zuerst am Bordstein?"]],
+  koerbe: { gehen: ["🟢 Ich darf gehen", "Hier ist der Weg frei."], warten: ["🔴 Ich warte", "Hier bleibe ich stehen."] },
+  dinge: [["🟢", "grünes Ampelmännchen", "gehen", "grün"], ["🦓", "Auto hält am Zebrastreifen", "gehen", "es steht"], ["👮", "Polizistin winkt mich herüber", "gehen", "sie winkt"],
+    ["🔴", "rotes Ampelmännchen", "warten", "rot"], ["🚗", "ein Auto kommt", "warten", "es fährt"], ["🚑", "Krankenwagen mit Blaulicht", "warten", "Blaulicht"]],
+  sortiere: "Darf ich gehen, oder warte ich? Zieh jedes Bild in den richtigen Korb.", h1: "Ist der Weg wirklich frei?", lob: "Du hast genau geschaut, ob der Weg frei ist.",
+  zeigen: ["Am Bordstein halte ich an.", "Ich schaue nach links, nach rechts und wieder nach links.", "Bei Rot bleibe ich stehen, bei Grün gehe ich.", "Ich gehe am Zebrastreifen oder an der Ampel über die Straße."],
+  merkheft: "Am Bordstein halte ich an, schaue links, rechts, links und gehe erst dann." });
+
+wissen("h_haustiere", "cafe", "otto", "Keeping pets well, being safe with dogs",
+  "Was braucht ein Haustier? Sortier mit mir.", {
+  koerbe: { braucht: ["❤️ Braucht das Tier", "Ohne das geht es dem Tier nicht gut."], nicht: ["🚫 Braucht es nicht", "Das hilft dem Tier nicht."] },
+  dinge: [["💧", "frisches Wasser", "braucht", "jeden Tag"], ["🥕", "richtiges Futter", "braucht", "für Kaninchen Heu und Gemüse"], ["🏠", "Platz zum Verstecken", "braucht", "Ruhe"],
+    ["🐕", "Auslauf", "braucht", "Bewegung"], ["🧹", "einen sauberen Stall", "braucht", "Sauberkeit"], ["🍫", "Schokolade", "nicht", "giftig für Tiere"],
+    ["📺", "Fernsehen", "nicht", "nur für Menschen"], ["🎀", "Kleidchen", "nicht", "Fell reicht"]],
+  sortiere: "Was braucht ein Haustier wirklich? Zieh alles in den richtigen Korb.", h1: "Hilft das dem Tier?", lob: "Du hast an das Tier gedacht.",
+  stimmt: [["Bevor ich einen fremden Hund streichle, frage ich den Besitzer.", true, "Doch: Erst fragen, dann streicheln.", "🐕"],
+    ["Einen fressenden Hund störe ich nicht.", true, "Doch: Beim Fressen will ein Hund Ruhe.", "🦴"],
+    ["Ein Kaninchen lebt am liebsten allein.", false, "Kaninchen leben gern zu zweit.", "🐇"],
+    ["Wenn ein Hund knurrt, gehe ich langsam weg.", true, "Doch: Ich renne nicht und schreie nicht.", "🐕"],
+    ["Ein Haustier ist ein Spielzeug.", false, "Ein Haustier ist ein Lebewesen und braucht Pflege.", "🐈"]],
+  raus: [[[["🐕", "Hund"], ["🐈", "Katze"], ["🐇", "Kaninchen"], ["🦁", "Löwe"]], 3, "Drei können Haustiere sein."]],
+  zeigen: ["Ein Haustier ist ein Lebewesen.", "Es braucht jeden Tag Futter, Wasser und Pflege.", "Einen fremden Hund streichle ich erst, wenn der Besitzer ja sagt.", "Einen fressenden oder schlafenden Hund störe ich nicht."],
+  merkheft: "Haustiere brauchen Futter, Wasser und Pflege, und fremde Hunde streichle ich erst nach dem Fragen." });
+
+wissen("h_nutztiere", "laden", "hilde", "Farm animals and crops and why they matter",
+  "In meinem Laden gibt es viel vom Bauernhof. Von welchem Tier kommt das? Sortier mit mir.", {
+  koerbe: { kuh: ["🐄 Kuh", "Die Kuh gibt Milch."], huhn: ["🐔 Huhn", "Das Huhn legt Eier."], schaf: ["🐑 Schaf", "Das Schaf hat Wolle."] },
+  dinge: [["🥛", "Milch", "kuh", "zum Trinken"], ["🧀", "Käse", "kuh", "aus Milch"], ["🧈", "Butter", "kuh", "aus Milch"], ["🍦", "Joghurt", "kuh", "aus Milch"],
+    ["🥚", "Ei", "huhn", "legt es"], ["🍳", "Spiegelei", "huhn", "gebraten"], ["🧶", "Wolle", "schaf", "vom Fell"], ["🧦", "Wollsocken", "schaf", "gestrickt"]],
+  sortiere: "Von welchem Tier kommt das? Zieh jedes Ding zum richtigen Tier.", h1: "Ist es aus Milch, aus Eiern oder aus Wolle?", lob: "Du hast gewusst, was jedes Tier uns gibt.",
+  stimmt: [["Aus Weizen wird Mehl für unser Brot gemacht.", true, "Doch: Das Korn wird gemahlen.", "🌾"],
+    ["Kartoffeln wachsen auf Bäumen.", false, "Kartoffeln wachsen unter der Erde.", "🥔"],
+    ["Bienen sind auch Nutztiere.", true, "Doch: Sie geben uns Honig und bestäuben Blüten.", "🐝"],
+    ["Die Milch kommt aus der Fabrik und nicht von der Kuh.", false, "Die Milch kommt von der Kuh.", "🐄"]],
+  raus: [[[["🌾", "Weizen"], ["🥔", "Kartoffel"], ["🌽", "Mais"], ["🌹", "Rose"]], 3, "Drei sind Nutzpflanzen, die wir essen."], [[["🐄", "Kuh"], ["🐖", "Schwein"], ["🐔", "Huhn"], ["🦒", "Giraffe"]], 3, "Drei leben auf dem Bauernhof."]],
+  zeigen: ["Nutztiere geben uns Nahrung und Wolle.", "Die Kuh gibt Milch, daraus macht man Käse und Butter.", "Das Huhn legt Eier, das Schaf gibt Wolle.", "Weizen, Kartoffeln und Mais sind Nutzpflanzen."],
+  merkheft: "Die Kuh gibt Milch, das Huhn legt Eier, und das Schaf gibt Wolle." });
+
+wissen("h_medien", "post", "emil", "Media in everyday life; using them wisely",
+  "Mit der Post kommen Briefe und Zeitungen. Wie nutzt man Medien? Sortier mit mir.", {
+  koerbe: { lesen: ["📖 Zum Lesen", "Das lese ich mit den Augen."], hoeren: ["🎧 Zum Hören", "Das höre ich mit den Ohren."], schauen: ["📺 Zum Schauen", "Da sehe ich Bilder, die sich bewegen."] },
+  dinge: [["📖", "Buch", "lesen", "Seiten"], ["📰", "Zeitung", "lesen", "Seiten"], ["✉️", "Brief", "lesen", "Papier"], ["📻", "Radio", "hoeren", "Ton"],
+    ["💿", "Hörspiel", "hoeren", "Ton"], ["📺", "Fernseher", "schauen", "Bildschirm"], ["🎬", "Film", "schauen", "Bildschirm"]],
+  sortiere: "Liest, hörst oder schaust du das? Zieh jedes Medium in den richtigen Korb.", h1: "Brauche ich dafür die Augen, die Ohren oder beides?", lob: "Du hast an Augen und Ohren gedacht.",
+  stimmt: [["Nach einer Weile am Bildschirm mache ich eine Pause.", true, "Doch: Pausen tun den Augen gut.", "⏸️"],
+    ["Ich schaue mir alles an, was im Internet ist.", false, "Ich schaue nur, was für Kinder ist, und frage Mama oder Papa.", "💻"],
+    ["Meinen Namen und meine Adresse gebe ich im Internet nicht weiter.", true, "Doch: Das bleibt geheim.", "🔒"],
+    ["Wenn mir etwas im Internet Angst macht, sage ich es einem Erwachsenen.", true, "Doch: Darüber reden hilft.", "🗣️"]],
+  zeigen: ["Medien sind Bücher, Zeitungen, Radio, Fernsehen und Internet.", "Manche Medien lese ich, manche höre ich, manche schaue ich.", "Am Bildschirm mache ich Pausen.", "Meinen Namen und meine Adresse verrate ich im Internet nicht."],
+  merkheft: "Am Bildschirm mache ich Pausen und verrate nichts über mich." });
+
+wissen("h_werkzeuge", "basteln", "katze", "Using tools safely (scissors, hammer, saw, pliers)",
+  "Wir basteln mit Werkzeug. Stimmt das? „Eine Schere trage ich mit der Spitze nach unten.“", {
+  stimmt: [["Eine Schere trage ich mit der Spitze nach unten.", true, "Doch: So verletze ich niemanden.", "✂️"],
+    ["Eine Schere gebe ich mit dem Griff zuerst weiter.", true, "Doch: Die Spitze zeigt zu mir.", "✂️"],
+    ["Mit der Säge arbeite ich nur mit einem Erwachsenen.", true, "Doch: Die Säge ist scharf.", "🪚"],
+    ["Mit dem Hammer schlage ich auf meine Finger.", false, "Ich halte den Nagel und schlage vorsichtig nur auf den Nagel.", "🔨"],
+    ["Nach dem Basteln räume ich das Werkzeug weg.", true, "Doch: Dann liegt nichts Gefährliches herum.", "🧰"],
+    ["Mit der Zange kann ich einen Nagel herausziehen.", true, "Doch: Die Zange packt fest zu.", "🗜️"]],
+  raus: [[[["✂️", "Schere"], ["🔨", "Hammer"], ["🪚", "Säge"], ["🧸", "Teddy"]], 3, "Drei sind Werkzeuge."],
+    [[["✂️", "Schere"], ["🪚", "Säge"], ["🔪", "Messer"], ["🔨", "Hammer"]], 3, "Drei schneiden."]],
+  koerbe: { schneiden: ["✂️ Schneidet", "Damit teile ich etwas."], klopfen: ["🔨 Klopft", "Damit schlage ich etwas fest."], halten: ["🗜️ Hält fest", "Damit packe ich etwas fest."] },
+  dinge: [["✂️", "Schere", "schneiden", "zwei Klingen"], ["🪚", "Säge", "schneiden", "Zähne"], ["🔨", "Hammer", "klopfen", "schwerer Kopf"], ["🪵", "Holzhammer", "klopfen", "schwerer Kopf"],
+    ["🗜️", "Zange", "halten", "packt zu"], ["🧷", "Wäscheklammer", "halten", "klemmt fest"]],
+  sortiere: "Was tut jedes Werkzeug? Zieh es in den richtigen Korb.", h1: "Hat es eine Klinge, einen schweren Kopf oder Backen?", lob: "Du hast dir jedes Werkzeug genau angeschaut.",
+  zeigen: ["Werkzeuge helfen beim Bauen und Basteln.", "Eine Schere trage ich mit der Spitze nach unten.", "Ich gebe sie mit dem Griff zuerst weiter.", "Mit Säge und Hammer arbeite ich vorsichtig und mit einem Erwachsenen."],
+  merkheft: "Werkzeug vorsichtig benutzen und danach wegräumen." });
+
+wissen("h_berufe", "post", "emil", "Jobs and kinds of work (farming, crafts, services)",
+  "Ich bin Briefträger. Welche Berufe kennst du? Sortier mit mir.", {
+  koerbe: { land: ["🚜 Mit Pflanzen und Tieren", "Diese Menschen arbeiten in der Natur."], hand: ["🔨 Stellt etwas her", "Diese Menschen machen Dinge mit ihren Händen."], dienst: ["🤝 Hilft anderen", "Diese Menschen helfen oder bedienen andere."] },
+  dinge: [["👩‍🌾", "Landwirtin", "land", "Feld und Stall"], ["🧑‍🌾", "Gärtner", "land", "Pflanzen"], ["👨‍🍳", "Bäcker", "hand", "backt Brot"], ["🪚", "Schreinerin", "hand", "baut Möbel"],
+    ["👩‍⚕️", "Ärztin", "dienst", "macht gesund"], ["🚌", "Busfahrer", "dienst", "fährt Leute"], ["💇", "Friseurin", "dienst", "schneidet Haare"], ["📮", "Briefträger", "dienst", "bringt die Post"]],
+  sortiere: "Was machen diese Menschen? Zieh jeden Beruf in den richtigen Korb.", h1: "Macht die Person etwas her, oder hilft sie anderen?", lob: "Du hast überlegt, was jeder bei der Arbeit macht.",
+  raus: [[[["🔨", "Hammer"], ["🪚", "Säge"], ["📏", "Zollstock"], ["🩺", "Stethoskop"]], 3, "Drei braucht die Schreinerin."], [[["🥖", "Brot"], ["🥨", "Brezel"], ["🥐", "Hörnchen"], ["🧲", "Magnet"]], 3, "Drei backt der Bäcker."]],
+  stimmt: [["Die Ärztin hilft kranken Menschen.", true, "Doch: Sie macht Menschen wieder gesund.", "👩‍⚕️"],
+    ["Der Bäcker fängt früh am Morgen an.", true, "Doch: Das Brot soll zum Frühstück fertig sein.", "🥖"],
+    ["Eine Landwirtin repariert Autos.", false, "Eine Landwirtin arbeitet auf dem Feld und im Stall.", "🚜"]],
+  zeigen: ["Viele Menschen arbeiten in einem Beruf.", "Landwirte arbeiten mit Pflanzen und Tieren.", "Handwerker wie der Bäcker oder die Schreinerin stellen etwas her.", "Andere helfen Menschen, wie die Ärztin oder der Busfahrer."],
+  merkheft: "In einem Beruf arbeitet man mit der Natur, stellt etwas her oder hilft anderen." });
+
+wissen("h_bauen", "basteln", "katze", "Building: how towers and walls stay standing",
+  "Wir bauen Türme. Welcher steht fest, welcher wackelt? Sortier mit mir.", {
+  koerbe: { fest: ["🏰 Steht fest", "So hält der Bau gut."], wackelt: ["🫨 Wackelt", "So fällt der Bau leicht um."] },
+  dinge: [["🔺", "unten breit, oben schmal", "fest", "breite Grundfläche"], ["🧱", "Steine versetzt gelegt", "fest", "wie bei einer Mauer"], ["🏛️", "auf festem Boden gebaut", "fest", "stabil"],
+    ["🔻", "unten schmal, oben breit", "wackelt", "kippt leicht"], ["📚", "Steine genau übereinander", "wackelt", "Fugen in einer Linie"], ["🛏️", "auf einem weichen Kissen gebaut", "wackelt", "weicher Boden"]],
+  sortiere: "Steht der Turm fest, oder wackelt er? Zieh jedes Bild in den richtigen Korb.", h1: "Wie breit ist der Turm unten?", lob: "Du hast auf die Grundfläche geschaut.",
+  stimmt: [["Ein Turm mit breiter Grundfläche steht fester.", true, "Doch: Unten breit macht stabil.", "🏰"],
+    ["In einer Mauer liegen die Steine versetzt.", true, "Doch: So hält die Mauer besser zusammen.", "🧱"],
+    ["Je höher ein schmaler Turm, desto fester steht er.", false, "Ein hoher schmaler Turm kippt leichter um.", "🗼"],
+    ["Schwere Steine kommen nach unten.", true, "Doch: Unten schwer, oben leicht.", "🪨"]],
+  zeigen: ["Ein Bau steht fest, wenn er unten breit ist.", "Schwere Teile kommen nach unten.", "In einer Mauer liegen die Steine versetzt.", "So drücken sie aufeinander und halten zusammen."],
+  merkheft: "Ein Bau steht fest, wenn er unten breit und schwer ist und die Steine versetzt liegen." });
+
+wissen("h_plan", "huegel", "mila", "Reading and drawing plans (floor plan, school grounds)",
+  "Ich grabe Gänge und brauche einen Plan. Stimmt das? „Ein Plan zeigt alles von oben.“", {
+  stimmt: [["Ein Plan zeigt alles von oben.", true, "Doch: Wie ein Vogel, der von oben schaut.", "🗺️"],
+    ["Auf einem Plan ist alles kleiner als in echt.", true, "Doch: Sonst würde er nicht auf das Papier passen.", "📄"],
+    ["Von oben sieht ein Tisch aus wie ein Rechteck.", true, "Doch: Von oben sehe ich nur die Tischplatte.", "🟫"],
+    ["Ein Plan zeigt, wie die Menschen aussehen.", false, "Ein Plan zeigt, wo die Dinge stehen.", "🧑"],
+    ["Mit einem Plan finde ich den Weg.", true, "Doch: Darum hat jede Schule einen Fluchtplan.", "🧭"]],
+  koerbe: { drinnen: ["🏫 Im Klassenzimmer", "Das steht drinnen."], draussen: ["🌳 Auf dem Schulhof", "Das ist draußen."] },
+  dinge: [["🧑‍🏫", "Tafel", "drinnen", "an der Wand"], ["🪑", "Stühle", "drinnen", "an den Tischen"], ["🚰", "Waschbecken", "drinnen", "neben der Tür"],
+    ["🛝", "Rutsche", "draussen", "zum Spielen"], ["🚲", "Fahrradständer", "draussen", "am Eingang"], ["🌳", "Baum", "draussen", "im Hof"]],
+  sortiere: "Was ist im Klassenzimmer, was auf dem Schulhof? Zieh alles an die richtige Stelle des Plans.", h1: "Steht das drinnen oder draußen?", lob: "Du hast dir die Schule genau vorgestellt.",
+  raus: [[[["🗺️", "Plan"], ["🧭", "Kompass"], ["🌍", "Globus"], ["🍌", "Banane"]], 3, "Drei helfen mir, den Weg zu finden."]],
+  zeigen: ["Ein Plan zeigt alles von oben.", "Auf dem Plan ist alles kleiner als in echt.", "Zeichen auf dem Plan stehen für echte Dinge.", "Mit einem Plan finde ich den Weg."],
+  merkheft: "Ein Plan zeigt alles von oben und kleiner." });
+
+wissen("h_zeitleiste", "tagebuch", "katze", "A timeline of my own life; sources",
+  "Wie warst du früher? Leg die Bilder der Reihe nach.", {
+  reihen: [["Mein Leben bis jetzt: Was kam zuerst?", [["👶", "Baby"], ["🧒", "Kleinkind"], ["🎨", "Kindergartenkind"], ["🎒", "Schulkind"]], "Was warst du ganz am Anfang?"],
+    ["Was lernt ein Kind zuerst?", [["🍼", "Trinken"], ["🧸", "Krabbeln"], ["🚶", "Laufen"], ["📖", "Lesen"]]]],
+  stimmt: [["Babyfotos erzählen, wie ich früher war.", true, "Doch: Fotos sind Quellen über früher.", "📷"],
+    ["Ich war schon immer so groß wie heute.", false, "Ich war einmal ein kleines Baby.", "👶"],
+    ["Oma und Opa können mir erzählen, wie es früher war.", true, "Doch: Auch sie sind Quellen.", "👵"],
+    ["Auf einer Zeitleiste steht das Älteste ganz am Anfang.", true, "Doch: Dann geht es Jahr für Jahr weiter.", "📏"]],
+  raus: [[[["📷", "Foto"], ["📜", "Urkunde"], ["👵", "Oma erzählt"], ["🔮", "Zauberkugel"]], 3, "Drei erzählen mir wirklich von früher."]],
+  zeigen: ["Eine Zeitleiste zeigt, was nacheinander passiert ist.", "Ganz am Anfang war ich ein Baby.", "Fotos und Erzählungen zeigen mir, wie ich früher war.", "So etwas nennt man Quellen."],
+  merkheft: "Auf der Zeitleiste kommt das Älteste zuerst, und Fotos erzählen von früher." });
+
+wissen("h_frueher_heute", "cafe", "otto", "Childhood long ago and today (play, school, family)",
+  "Als ich klein war, war vieles anders. Was ist von früher, was von heute? Sortier mit mir.", {
+  koerbe: { frueher: ["🕰️ Früher", "So war es früher, vor langer Zeit."], heute: ["📱 Heute", "So ist es jetzt."] },
+  dinge: [["🪀", "Kreisel aus Holz", "frueher", "selbst gedreht"], ["🖋️", "Tintenfeder", "frueher", "zum Eintauchen"], ["🪣", "Wasser vom Brunnen holen", "frueher", "vor hundert Jahren"], ["🕯️", "Licht von einer Kerze", "frueher", "vor hundert Jahren"],
+    ["📱", "Handy", "heute", "Bildschirm"], ["💻", "Tablet", "heute", "Bildschirm"], ["🚰", "Wasserhahn", "heute", "Wasser im Haus"], ["💡", "Glühbirne", "heute", "Strom"]],
+  sortiere: "Ist das von früher oder von heute? Zieh jedes Ding in den richtigen Korb.", h1: "Braucht es Strom oder einen Bildschirm?", lob: "Du hast dir vorgestellt, wie die Menschen früher gelebt haben.",
+  stimmt: [["Früher schrieben Kinder in der Schule auf eine Schiefertafel.", true, "Doch: Mit einem Griffel auf der Tafel.", "🪨"],
+    ["Früher hatten alle Kinder ein Handy.", false, "Handys gibt es erst seit ein paar Jahrzehnten.", "📱"],
+    ["Seilspringen und Murmeln spielten Kinder früher auch schon.", true, "Doch: Manche Spiele sind sehr alt.", "🪢"],
+    ["Früher lebten oft Großeltern, Eltern und Kinder zusammen in einem Haus.", true, "Doch: Viele Familien wohnten zusammen.", "🏠"]],
+  zeigen: ["Als Oma und Opa Kinder waren, gab es keine Handys und keine Tablets.", "Vor hundert Jahren hatten viele Häuser noch keinen Strom und keinen Wasserhahn.", "In der Schule schrieben die Kinder auf eine Schiefertafel.", "Manche Spiele wie Seilspringen gibt es heute noch."],
+  merkheft: "Früher war vieles anders, manches ist gleich geblieben." });
+
+wissen("h_sage_fakt", "tagebuch", "katze", "History or stories? Fact and fiction (legends, castles)",
+  "Was gab es wirklich, was ist erfunden? Sortier mit mir.", {
+  koerbe: { echt: ["🏰 Gab es wirklich", "Das gab es früher wirklich."], erfunden: ["🐉 Ist erfunden", "Das gibt es nur in Geschichten."] },
+  dinge: [["🏰", "Burg", "echt", "steht noch heute"], ["🛡️", "Ritter", "echt", "lebten früher"], ["👑", "König", "echt", "regierte früher"], ["🐴", "Pferd", "echt", "ein echtes Tier"],
+    ["🐉", "Drache", "erfunden", "nur in Sagen"], ["🦄", "Einhorn", "erfunden", "nur im Märchen"], ["🧙", "Zauberer", "erfunden", "Zauberei gibt es nicht"], ["🧌", "Riese", "erfunden", "nur in Sagen"]],
+  sortiere: "Gab es das wirklich, oder ist es erfunden? Zieh jedes Bild in den richtigen Korb.", h1: "Hast du das schon einmal in echt gesehen, im Museum oder auf einem Bild von früher?", lob: "Du hast echt und erfunden auseinandergehalten.",
+  stimmt: [["Auf Burgen lebten früher Ritter.", true, "Doch: Viele Burgen kann man heute noch besuchen.", "🏰"],
+    ["Eine Sage ist eine alte Geschichte, in der manches erfunden ist.", true, "Doch: Darin gibt es oft Riesen oder Drachen.", "📜"],
+    ["Drachen haben früher wirklich in Bayern gelebt.", false, "Drachen gibt es nur in Geschichten.", "🐉"],
+    ["Im Museum sieht man echte Dinge von früher.", true, "Doch: Zum Beispiel Rüstungen von Rittern.", "🏛️"]],
+  zeigen: ["Geschichte erzählt, was früher wirklich passiert ist.", "Burgen und Ritter gab es wirklich.", "Sagen und Märchen sind Geschichten, in denen manches erfunden ist.", "Drachen und Riesen gibt es nur in Geschichten."],
+  merkheft: "Burgen und Ritter gab es wirklich, Drachen und Riesen sind erfunden." });
+
+wissen("h_nah_fern", "see", "fridolin", "Places near and far: home town, city and countryside",
+  "Ich fliege weit herum. Was gibt es in der Stadt, was auf dem Land? Sortier mit mir.", {
+  koerbe: { stadt: ["🏙️ Stadt", "In der Stadt wohnen viele Menschen eng zusammen."], land: ["🏡 Land", "Auf dem Land gibt es viel Platz und Natur."] },
+  dinge: [["🏢", "Hochhaus", "stadt", "viele Stockwerke"], ["🚇", "U-Bahn", "stadt", "fährt unter der Erde"], ["🏬", "Kaufhaus", "stadt", "viele Geschäfte"], ["🚦", "viele Ampeln", "stadt", "viel Verkehr"],
+    ["🚜", "Traktor", "land", "auf dem Feld"], ["🐄", "Kuhweide", "land", "Wiesen"], ["🌾", "Kornfeld", "land", "viel Platz"], ["🏡", "Bauernhof", "land", "Tiere und Felder"]],
+  sortiere: "Ist das in der Stadt oder auf dem Land? Zieh jedes Bild in den richtigen Korb.", h1: "Gibt es dort viele Häuser oder viele Felder?", lob: "Du hast dir Stadt und Land vorgestellt.",
+  stimmt: [["München ist eine große Stadt in Bayern.", true, "Doch: München ist die Hauptstadt von Bayern.", "🏙️"],
+    ["Auf dem Land gibt es mehr Hochhäuser als in der Stadt.", false, "Hochhäuser gibt es vor allem in der Stadt.", "🏢"],
+    ["Mein Wohnort ist der Ort, an dem ich zu Hause bin.", true, "Doch: Dort wohne ich mit meiner Familie.", "🏠"],
+    ["Bayern liegt in Deutschland.", true, "Doch: Bayern ist ein Bundesland von Deutschland.", "🗺️"]],
+  raus: [[[["🏢", "Hochhaus"], ["🚇", "U-Bahn"], ["🚦", "Ampel"], ["🚜", "Traktor"]], 3, "Drei findest du vor allem in der Stadt."]],
+  zeigen: ["Mein Wohnort ist da, wo ich zu Hause bin.", "In der Stadt gibt es viele Häuser, Straßen und Menschen.", "Auf dem Land gibt es Felder, Wiesen und Bauernhöfe.", "München ist eine große Stadt in Bayern."],
+  merkheft: "In der Stadt gibt es viele Häuser, auf dem Land viele Felder." });
+
+wissen("h_wasserkreislauf", "see", "fridolin", "Water: ice, water, steam, and the water cycle",
+  "Das Wasser in meinem See ist immer unterwegs. Leg die Bilder der Reihe nach.", {
+  reihen: [["Die Reise des Wassers: Fang beim See an.", [["🌊", "Wasser im See"], ["☀️", "Die Sonne wärmt, Wasser steigt auf"], ["☁️", "Es wird eine Wolke"], ["🌧️", "Es regnet wieder"]], "Wo ist das Wasser am Anfang?"],
+    ["Was passiert mit Eis, wenn es immer wärmer wird?", [["🧊", "Eis"], ["💧", "Es schmilzt zu Wasser"], ["🍲", "Im Topf wird das Wasser heiß"], ["♨️", "Dampf steigt auf"]]]],
+  koerbe: { eis: ["🧊 Fest: Eis", "Gefrorenes Wasser ist fest."], wasser: ["💧 Flüssig: Wasser", "Wasser kann fließen."], dampf: ["♨️ Wie Luft: Dampf", "Heißes Wasser steigt als Dampf auf."] },
+  dinge: [["🧊", "Eiswürfel", "eis", "kalt und hart"], ["⛸️", "zugefrorener See", "eis", "man kann darauf laufen"], ["❄️", "Schneeflocke", "eis", "gefroren"],
+    ["🌧️", "Regen", "wasser", "tropft"], ["🚿", "Dusche", "wasser", "fließt"], ["🫖", "Dampf aus dem Teekessel", "dampf", "steigt auf"], ["🍲", "Dampf über dem Topf", "dampf", "steigt auf"]],
+  sortiere: "Ist das Wasser fest, flüssig oder Dampf? Zieh jedes Bild in den richtigen Korb.", h1: "Ist es kalt und hart, fließt es, oder steigt es auf?", lob: "Du hast an kalt, warm und heiß gedacht.",
+  stimmt: [["Wenn Wasser gefriert, wird es zu Eis.", true, "Doch: Bei großer Kälte wird Wasser fest.", "🧊"],
+    ["Wolken sind aus Watte.", false, "Wolken sind aus ganz vielen kleinen Wassertröpfchen.", "☁️"],
+    ["Die Sonne lässt Wasser verdunsten.", true, "Doch: Dann steigt es unsichtbar auf.", "☀️"],
+    ["Regenwasser fließt in Bäche, Flüsse und Seen.", true, "Doch: Und dann beginnt die Reise von vorn.", "🏞️"]],
+  zeigen: ["Wasser kann fest sein wie Eis, flüssig oder Dampf.", "Die Sonne wärmt das Wasser, es steigt auf.", "Oben wird daraus eine Wolke.", "Aus der Wolke regnet es, und das Wasser fließt zurück in den See."],
+  merkheft: "Wasser verdunstet, wird zur Wolke, regnet und fließt zurück." });
+
 // ---------- Orte: welche Arten an welchem Ort zu Hause sind ----------
 const ORTE = ["post", "laden", "cafe", "garten", "huegel", "see", "regal", "basteln", "puppen", "tagebuch"];
 const orte = Object.fromEntries(ORTE.map(o => [o, []]));
 for(const c of Object.values(STEPS)) for(const a of c.arten) if(!orte[c.home].includes(a)) orte[c.home].push(a);
 
-const INHALT = { orte, steps: STEPS, zahlwort };
+const INHALT = { orte, steps: STEPS, zahlwort, betrag, uhrzeit };
 if(typeof module !== "undefined" && module.exports) module.exports = INHALT; else root.INHALT = INHALT;
 })(this);

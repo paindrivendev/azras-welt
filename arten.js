@@ -16,19 +16,22 @@ const A = window.AUFGABEN;
 
 // ---------- gemeinsame Bausteine ----------
 const shuffle = a => { a = [...a]; for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-const fmt = c => c >= 100 ? (c % 100 ? (c / 100).toFixed(2).replace(".", ",") + " €" : c / 100 + " €") : c + " ct";
+// Geld wie in der Schule: 50 ct, 1 €, 9 € 30 ct (gemischte Schreibweise, wie betrag in inhalt.js)
+const fmt = c => c < 100 ? c + " ct" : c % 100 ? `${Math.floor(c / 100)} € ${c % 100} ct` : c / 100 + " €";
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const COINS = [1, 2, 5, 10, 20, 50, 100];
 const greedy = (v, set = [100, 50, 20, 10, 5, 2, 1]) => { const out = []; for(const c of set) while(v >= c){ out.push(c); v -= c; } return out; };
-const coinEl = v => { const d = document.createElement("div"); d.className = "coin c" + v; d.textContent = v >= 100 ? "1 €" : v + " ct"; d.dataset.v = v; return d; };
-function coinGame(st, G, { tag, target, react }){
+// Münzen bis 2 €, ab 5 € Scheine (Klasse schein); geld (optional): welche es auf dem Tablett gibt, sonst bis 1 €
+const coinEl = v => { const d = document.createElement("div"); d.className = "coin c" + v + (v >= 500 ? " schein" : ""); d.textContent = fmt(v); d.dataset.v = v; return d; };
+const geldSatz = it => it.geld ? [...it.geld].sort((a, b) => b - a) : undefined;
+function coinGame(st, G, { tag, target, react, geld }){
   st.innerHTML = `<div class="scene"><div class="tag">${tag}</div><div class="zone counter" id="counter"><span class="ph">Hier hinlegen</span></div>
     <div class="hintline" id="sum"></div><div class="tray" id="tray"></div><button class="btn" id="go">Fertig</button></div>`;
   const counter = G.$("#counter"), tray = G.$("#tray"), sumEl = G.$("#sum");
   const sum = () => [...counter.querySelectorAll(".coin")].reduce((s, c) => s + +c.dataset.v, 0);
   const upd = G.ref.upd = () => { counter.querySelector(".ph").style.display = counter.querySelector(".coin") ? "none" : ""; if(G.ref.showSum) sumEl.textContent = "Schon hingelegt: " + fmt(sum()); };
   const put = v => { const c = coinEl(v); counter.appendChild(c); G.klang("pop"); G.draggable(c, { onTap: () => { c.remove(); upd(); }, onDrop: z => { if(!z || z.id !== "counter"){ c.remove(); upd(); } } }); upd(); };
-  COINS.forEach(v => { const c = coinEl(v); tray.appendChild(c); G.draggable(c, { onTap: () => put(v), onDrop: z => { if(z && z.id === "counter") put(v); } }); });
+  (geld || COINS).forEach(v => { const c = coinEl(v); tray.appendChild(c); G.draggable(c, { onTap: () => put(v), onDrop: z => { if(z && z.id === "counter") put(v); } }); });
   G.ref.clear = () => { counter.querySelectorAll(".coin").forEach(c => c.remove()); upd(); };
   G.ref.glow = vals => { tray.querySelectorAll(".coin").forEach(c => c.classList.toggle("glow", vals.includes(+c.dataset.v))); sumEl.textContent = vals.map(fmt).join(" + "); };
   G.$("#go").onclick = () => { if(G.locked) return; const s = sum(); if(s === target) G.solved(); else G.miss(react(s)); };
@@ -86,26 +89,34 @@ function legeMuenzen(st, werte){ st.querySelectorAll("#counter .coin").forEach(t
 // ==================== MATHE ====================
 A.art({ id: "bezahlen", fach: "mathe", titel: "Mit Münzen bezahlen", klang: "clink",
   en: { title: "Pay with coins", does: "drags or taps coins onto the shop counter to pay a price." },
-  beispiel: [{ p: 65, thing: "Das Glitzerpapier" }, { p: 38, thing: "Die Haarspange für die Puppe" }, { p: 90, thing: "Die Bastelschere" }],
+  beispiel: [{ p: 65, thing: "Das Glitzerpapier" }, { p: 38, thing: "Die Haarspange für die Puppe" }, { p: 90, thing: "Die Bastelschere" },
+    { p: 1240, geld: [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000], bitte: "Für den Lieferanten brauche ich genau 12 € 40 ct. Leg das Geld auf die Theke." }],
   mount(st, it, G){ G.say("n", it.bitte || `${it.thing} kostet ${fmt(it.p)}. Leg das Geld auf die Theke.`);
-    coinGame(st, G, { tag: `🏷️ ${fmt(it.p)}`, target: it.p, react: s => s < it.p ? `Hmm, da fehlen noch ${fmt(it.p - s)}.` : `Oh, das sind ${fmt(s - it.p)} zu viel.` }); },
-  hint(r, it, G){ if(r === 1) return "Fang mit der größten Münze an, die noch passt.";
+    coinGame(st, G, { tag: `🏷️ ${fmt(it.p)}`, target: it.p, geld: it.geld, react: s => s < it.p ? `Hmm, da fehlen noch ${fmt(it.p - s)}.` : `Oh, das sind ${fmt(s - it.p)} zu viel.` }); },
+  hint(r, it, G){ if(r === 1) return it.geld ? "Fang mit dem größten Geld an, das noch passt." : "Fang mit der größten Münze an, die noch passt.";
     if(r === 2){ G.ref.showSum = true; G.ref.upd(); return "Ich schreibe mit, wie viel schon daliegt."; }
-    G.ref.clear(); G.ref.glow(greedy(it.p)); return "Diese Münzen passen zusammen. Leg du sie hin."; },
-  praise: () => "Du hast die Münzen zusammengezählt, bevor du bezahlt hast.",
-  probe: { falsch: st => legeMuenzen(st, [1]), richtig: (st, it) => legeMuenzen(st, greedy(it.p)) } });
+    G.ref.clear(); G.ref.glow(greedy(it.p, geldSatz(it))); return it.geld ? "Dieses Geld passt zusammen. Leg du es hin." : "Diese Münzen passen zusammen. Leg du sie hin."; },
+  praise: it => it.lob || "Du hast die Münzen zusammengezählt, bevor du bezahlt hast.",
+  probe: { falsch: st => legeMuenzen(st, [1]), richtig: (st, it) => legeMuenzen(st, greedy(it.p, geldSatz(it))) } });
 
 A.art({ id: "wechselgeld", fach: "mathe", titel: "Wechselgeld geben", klang: "clink",
   en: { title: "Give change", does: "gives a café guest the change from 1 € with coins (counting on to 100)." },
-  beispiel: [{ p: 70, thing: "Kakao" }, { p: 45, thing: "Brezel" }, { p: 85, thing: "Apfelschorle" }],
+  beispiel: [{ p: 70, thing: "Kakao" }, { p: 45, thing: "Brezel" }, { p: 85, thing: "Apfelschorle" },
+    { p: 370, pa: 220, pb: 150, bez: 500, geld: [1, 2, 5, 10, 20, 50, 100, 200], thing: "ein Muffin und ein Saft", tag: "2 € 20 ct + 1 € 50 ct · bezahlt: 5 €" }],
   mount(st, it, G){ G.say("n", it.bitte || `Mein ${it.thing} kostet ${fmt(it.p)}. Ich gebe dir 1 €. Bekomme ich Geld zurück?`);
-    coinGame(st, G, { tag: `${it.thing}: ${fmt(it.p)} · bezahlt: 1 €`, target: 100 - it.p, react: s => s < 100 - it.p ? `Hmm, da fehlen mir noch ${fmt(100 - it.p - s)}.` : `Oh, das sind ${fmt(s - (100 - it.p))} zu viel.` }); },
-  hint(r, it, G){ if(r === 1) return `Zähl von ${it.p} weiter bis 100.`;
+    const bez = it.bez || 100, z = bez - it.p; // bez (optional): womit bezahlt wurde, sonst 1 €
+    coinGame(st, G, { tag: it.tag || `${it.thing}: ${fmt(it.p)} · bezahlt: 1 €`, target: z, geld: it.geld, react: s => s < z ? `Hmm, da fehlen mir noch ${fmt(z - s)}.` : `Oh, das sind ${fmt(s - z)} zu viel.` }); },
+  hint(r, it, G){ const bez = it.bez || 100;
+    if(bez !== 100){ const euro = Math.ceil(it.p / 100) * 100;
+      if(r === 1) return `Zähl von ${fmt(it.p)} weiter bis ${fmt(bez)}.`;
+      if(r === 2){ G.$("#sum").textContent = euro > it.p && euro < bez ? `${fmt(it.p)} → ${fmt(euro)} → ${fmt(bez)}` : `${fmt(it.p)} → ${fmt(bez)}`; return euro > it.p && euro < bez ? "Zähl erst bis zum nächsten vollen Euro, dann weiter." : "Zähl in ganzen Euro weiter."; }
+      G.ref.clear(); G.ref.glow(greedy(bez - it.p, geldSatz(it))); return "Dieses Geld passt. Leg du es hin."; }
+    if(r === 1) return `Zähl von ${it.p} weiter bis 100.`;
     if(r === 2){ const t = Math.ceil(it.p / 10) * 10, marks = [{ v: it.p }]; for(let v = t; v <= 100; v += 10) if(v !== it.p) marks.push({ v, t: v === 100 ? "1 €" : "?" });
       G.$("#sum").innerHTML = strichSVG(it.p - 2, 102, marks, []); return "Hier ist ein Rechenstrich bis 1 €."; }
     G.ref.clear(); G.ref.glow(greedy(100 - it.p)); return `Zähl mit: ${it.p}, dann weiter bis 100. Leg du die leuchtenden Münzen hin.`; },
-  praise: it => `Du hast von ${it.p} weitergezählt bis 1 €.`,
-  probe: { falsch: st => legeMuenzen(st, [1]), richtig: (st, it) => legeMuenzen(st, greedy(100 - it.p)) } });
+  praise: it => it.bez ? `Du hast weitergezählt bis ${fmt(it.bez)}.` : `Du hast von ${it.p} weitergezählt bis 1 €.`,
+  probe: { falsch: st => legeMuenzen(st, [1]), richtig: (st, it) => legeMuenzen(st, greedy((it.bez || 100) - it.p, geldSatz(it))) } });
 
 function packe(st, n){
   st.querySelectorAll("#box [data-v]").forEach(tap); const rod = st.querySelector('#tray [data-v="10"]'), bead = st.querySelector('#tray [data-v="1"]');
@@ -198,6 +209,38 @@ A.art({ id: "ergaenzen", fach: "mathe", titel: "Ergänzen mit Ziffern tippen", k
   praise: it => it.wort ? "Du hast das Wort genau gelesen." : "Du hast erst bis zum Zehner gerechnet.",
   probe: { falsch: (st, it) => tippZahl(st, loesung(it) + 1), richtig: (st, it) => tippZahl(st, loesung(it)) } });
 
+// Blitzrechnen (Ticket 33): Hilfe je nach Aufgabe – Zehnerzahlen wie Einer, über die 10 in zwei Schritten, nur die Einer, Punkte
+function blitzHilfe(it){
+  const { a, b, op, res } = it, z = op === "+" ? "+" : "−";
+  if(a <= 10 && res <= 10){ const p = op === "+" ? "●".repeat(a) + " " + "●".repeat(b) : "●".repeat(a - b) + "○".repeat(b);
+    return [op === "+" ? `Fang bei ${a} an und zähl im Kopf weiter.` : `Fang bei ${a} an und zähl im Kopf zurück.`,
+      [p, op === "+" ? "Hier sind die Punkte." : "Die leeren Punkte nimmst du weg."], [p, "Zähl die vollen Punkte, dann tipp."]]; }
+  if(a % 10 === 0 && b % 10 === 0) return ["Rechne mit den Zehnern wie mit kleinen Zahlen.",
+    [`${a / 10} Zehner ${z} ${b / 10} Zehner`, "Das ist wie eine kleine Aufgabe."], [`${a / 10} ${z} ${b / 10} = ? → ? Zehner`, "Rechne die kleine Aufgabe, dann tipp die Zehnerzahl."]];
+  if(op === "+" && a < 10){ const bis = 10 - a, rest = b - bis;
+    return ["Rechne erst bis zur 10.", [`${a} + ${bis} + ${rest}`, `So zerlege ich die ${b}.`], [`${a} + ${bis} = 10, 10 + ${rest} = ?`, "Rechne du den letzten Schritt."]]; }
+  if(op === "-" && res < 10){ const bis = a - 10, rest = b - bis;
+    return ["Rechne erst zurück bis zur 10.", [`${a} − ${bis} − ${rest}`, `So zerlege ich die ${b}.`], [`${a} − ${bis} = 10, 10 − ${rest} = ?`, "Rechne du den letzten Schritt."]]; }
+  const e = a % 10, ee = op === "+" ? e + b : e - b;
+  return ["Schau nur auf die Einer.", [`${e} ${z} ${b} = ?`, "Rechne erst mit den Einern."], [`${e} ${z} ${b} = ${ee}, dazu die 10`, "Jetzt noch die 10 dazu."]];
+}
+A.art({ id: "blitzrechnen", fach: "mathe", titel: "Blitzrechnen: schnell im Kopf", klang: "chime",
+  en: { title: "Quick sums against the lightning", does: "sees a plus or minus fact and types the result on a keypad; answering before the lightning bar runs out earns a ⚡ star, being slower costs nothing." },
+  beispiel: [{ a: 7, b: 8, op: "+", res: 15, ms: 7000 }, { a: 13, b: 6, op: "-", res: 7, ms: 6000 }, { a: 30, b: 40, op: "+", res: 70, ms: 6000 },
+    { a: 14, b: 3, op: "+", res: 17, ms: 7000 }, { a: 9, b: 4, op: "-", res: 5, ms: 8000 }],
+  mount(st, it, G){ const z = it.op === "+" ? "+" : "−", ms = it.ms || 7000, frage = it.bitte || `Blitzrechnen! Wie viel ist ${it.a} ${it.op === "+" ? "plus" : "minus"} ${it.b}?`;
+    const vor = 400 + 70 * frage.length, t0 = Date.now() + vor; // so lange etwa spricht der Nachbar die Frage; erst danach läuft der Blitz
+    G.say("n", frage);
+    st.innerHTML = `<div class="scene"><div class="blitzbahn" id="bb"><div class="blitzrest" id="bz"></div><span class="blitzicon">⚡</span></div>
+      <div class="big">${it.a} ${z} ${it.b} = <span class="answerbox"></span></div><div class="hintline" id="h"></div><div class="keypad"></div></div>`;
+    const bz = G.$("#bz"); bz.style.transition = `width ${ms}ms linear ${vor}ms`; requestAnimationFrame(() => requestAnimationFrame(() => { bz.style.width = "0%"; }));
+    const kp = keypad(st, G, x => {
+      if(x === it.res){ if(G.rung === 0 && !G.zusammen && Date.now() - t0 <= ms){ G.ref.stern = true; G.$("#bb").classList.add("stern"); } G.solved(); }
+      else { G.miss(x > it.res ? `${x} ist ein bisschen zu viel.` : `${x} ist ein bisschen zu wenig.`); kp.clear(); } }); },
+  hint(r, it, G){ const h = blitzHilfe(it); if(r === 1) return h[0]; G.$("#h").textContent = h[r - 1][0]; return h[r - 1][1]; },
+  praise: (it, G) => G.ref.stern ? "Schneller als der Blitz!" : "Du hast im Kopf gerechnet.",
+  probe: { falsch: (st, it) => tippZahl(st, it.res + 1), richtig: (st, it) => tippZahl(st, it.res) } });
+
 A.art({ id: "hundert", fach: "mathe", titel: "Hausnummer auf der Hundertertafel", klang: "chime",
   en: { title: "House number on the Hundertertafel", does: "taps the square of a house number on the hundred square." },
   beispiel: [{ n: 47 }, { n: 23 }, { n: 86 }],
@@ -242,13 +285,14 @@ function stelleUhr(st, G, h, m){
 }
 A.art({ id: "uhr", fach: "mathe", titel: "Uhr stellen", klang: "chime",
   en: { title: "Set the clock", does: "turns the clock hands with her finger to a time (full, half, quarter hours)." },
-  beispiel: [{ h: 7, m: 0, say: "7 Uhr" }, { h: 3, m: 30, say: "halb vier" }, { h: 9, m: 15, say: "Viertel nach neun" }],
+  beispiel: [{ h: 7, m: 0, say: "7 Uhr" }, { h: 3, m: 30, say: "halb vier" }, { h: 9, m: 15, say: "Viertel nach neun" }, { h: 12, m: 0, say: "12 Uhr" },
+    { h: 3, m: 45, say: "Viertel vor vier" }],
   mount(st, it, G){ G.say("n", it.bitte || `Treffen wir uns um ${it.say} am See? Stell die Uhr, damit du es nicht vergisst.`);
     const nums = [...Array(12)].map((_, i) => { const n = i + 1, a = n * Math.PI / 6; return `<text class="num" id="n${n}" x="${(80 * Math.sin(a)).toFixed(1)}" y="${(-80 * Math.cos(a) + 6).toFixed(1)}">${n}</text>`; }).join("");
     const ticks = [...Array(60)].map((_, i) => `<line x1="0" y1="-100" x2="0" y2="${i % 5 ? -95 : -90}" stroke="#2b2140" stroke-width="${i % 5 ? 1 : 3}" transform="rotate(${i * 6})"/>`).join("");
     st.innerHTML = `<div class="scene"><svg viewBox="-110 -110 220 220" class="clock" id="clk"><circle r="100" class="face"/>${ticks}${nums}<g id="tgt"></g>
       <line id="hh" x1="0" y1="0" x2="0" y2="-48" class="hh"/><line id="mh" x1="0" y1="0" x2="0" y2="-74" class="mh"/><circle r="6" fill="#2b2140"/></svg><button class="btn" id="go">Fertig</button></div>`;
-    const S = G.ref.S = { h: 12, m: 0 }, svg = G.$("#clk"), mh = G.$("#mh"), hh = G.$("#hh");
+    const S = G.ref.S = { h: it.h === 12 && !it.m ? 6 : 12, m: 0 }, svg = G.$("#clk"), mh = G.$("#mh"), hh = G.$("#hh");
     const draw = G.ref.draw = () => { mh.setAttribute("transform", `rotate(${S.m * 6})`); hh.setAttribute("transform", `rotate(${((S.h % 12) + S.m / 60) * 30})`); };
     const ang = e => { const b = svg.getBoundingClientRect(); return (Math.atan2(e.clientX - (b.left + b.width / 2), -(e.clientY - (b.top + b.height / 2))) * 180 / Math.PI + 360) % 360; };
     const dist = (p, q) => { const d = Math.abs(p - q) % 360; return Math.min(d, 360 - d); }; let drag = null;
@@ -259,8 +303,11 @@ A.art({ id: "uhr", fach: "mathe", titel: "Uhr stellen", klang: "chime",
     G.$("#go").onclick = () => { if(G.locked) return; (S.h === it.h && S.m === it.m) ? G.solved() : G.miss(`Die Uhr zeigt jetzt ${S.h}:${String(S.m).padStart(2, "0")} Uhr.`); }; draw(); },
   hint(r, it, G){ if(r === 1) return "Der lange Zeiger zeigt die Minuten, der kurze die Stunden.";
     if(r === 2){ const a = it.m * 6 * Math.PI / 180; G.$("#tgt").innerHTML = `<circle cx="${92 * Math.sin(a)}" cy="${-92 * Math.cos(a)}" r="9" fill="#ffe066" stroke="#c27a00" stroke-width="2"/>`; return "Am gelben Punkt steht der lange Zeiger."; }
-    G.ref.S.m = it.m; G.ref.mfixed = true; G.ref.draw(); G.$(`#n${it.h}`).classList.add("glowt");
-    return `Den langen Zeiger habe ich gestellt. Dreh du den kurzen ${it.m ? "kurz hinter die" : "auf die"} ${it.h}.`; },
+    // nach halb steht der kurze Zeiger schon fast auf der nächsten Zahl ("Viertel vor vier": kurz vor die 4)
+    const nach = it.h % 12 + 1, zahl = it.m > 30 ? nach : it.h;
+    G.ref.S.m = it.m; G.ref.mfixed = true; G.ref.draw(); G.$(`#n${zahl}`).classList.add("glowt");
+    const wo = !it.m ? `auf die ${it.h}` : it.m === 30 ? `genau zwischen die ${it.h} und die ${nach}` : it.m > 30 ? `kurz vor die ${nach}` : `kurz hinter die ${it.h}`;
+    return `Den langen Zeiger habe ich gestellt. Dreh du den kurzen ${wo}.`; },
   praise: () => "Du hast zuerst auf den langen Zeiger geschaut.",
   probe: { falsch(st, it, G){ stelleUhr(st, G, it.h % 12 + 1, it.m); tippe(st.querySelector("#go")); }, richtig(st, it, G){ stelleUhr(st, G, it.h, it.m); tippe(st.querySelector("#go")); } } });
 
@@ -534,7 +581,7 @@ A.art({ id: "stimmt", fach: "deutsch", titel: "Stimmt das? (Satz lesen)", klang:
   beispiel: [{ s: "Fische können fliegen.", a: false, f: "Fische können nicht fliegen. Sie schwimmen." }, { s: "Im Winter ist es bei uns oft kalt.", a: true, f: "Doch: Im Winter ist es bei uns oft kalt." },
     { s: "Eine Katze hat vier Beine.", a: true, f: "Doch: Eine Katze hat vier Beine." }, { s: "Bananen sind blau.", a: false, f: "Bananen sind gelb, nicht blau." }],
   mount(st, it, G){ G.say("n", it.bitte || "Lies den Satz. Stimmt das?");
-    st.innerHTML = `<div class="scene"><div class="sentence">${it.s}</div><div class="row yesno"><button class="btn" data-a="1">👍 Stimmt</button><button class="btn nein" data-a="0">👎 Stimmt nicht</button></div></div>`;
+    st.innerHTML = `<div class="scene">${it.bild ? `<div class="satzbild">${it.bild}</div>` : ""}<div class="sentence">${it.s}</div><div class="row yesno"><button class="btn" data-a="1">👍 Stimmt</button><button class="btn nein" data-a="0">👎 Stimmt nicht</button></div></div>`;
     G.ref.richtig = () => G.$(`[data-a="${it.a ? 1 : 0}"]`).classList.add("richtig"); // nach einer falschen Antwort, bevor es weitergeht
     G.$$("[data-a]").forEach(b => b.onclick = () => { if(G.locked) return; (b.dataset.a === "1") === it.a ? G.solved() : G.miss(it.f); }); },
   hint(){ return null; }, praise: () => "Du hast den ganzen Satz gelesen, bevor du entschieden hast.",
@@ -799,18 +846,37 @@ const TONNEN = { papier: ["🟦 Papier", "Die Papiertonne nimmt Papier und Pappe
 A.art({ id: "muell", fach: "hsu", titel: "In die richtige Tonne sortieren", klang: "pop",
   en: { title: "Sort into bins", does: "drags each thing into the right Munich bin (paper, bio, recycling, rest)." },
   beispiel: [{ t: [["🍌", "Bananenschale", "bio", "aus der Natur"], ["📰", "Zeitung", "papier", "aus Papier"], ["🥤", "Plastikbecher", "wert", "aus Plastik"], ["🥫", "Dose", "wert", "aus Metall"], ["📦", "Karton", "papier", "aus Pappe"], ["🍎", "Apfelrest", "bio", "aus der Natur"], ["🩹", "Pflaster", "rest", "schmutzig, gemischt"]] }],
-  mount(st, it, G){ G.say("n", it.bitte || "Hilfst du mir beim Aufräumen? Was kommt in welche Tonne?");
-    st.innerHTML = `<div class="scene"><div class="items" id="src"></div><div class="bins">${Object.entries(TONNEN).map(([k, [n]]) => `<div class="zone bin" data-b="${k}"><b>${n}</b><div class="items"></div></div>`).join("")}</div></div>`;
+  // koerbe (optional, HSU-Themen): eigene Körbe {key: [Name, Satz bei einem Fehler]} statt der Münchner Tonnen
+  mount(st, it, G){ G.say("n", it.bitte || "Hilfst du mir beim Aufräumen? Was kommt in welche Tonne?"); const K = it.koerbe || TONNEN;
+    st.innerHTML = `<div class="scene"><div class="items" id="src"></div><div class="bins">${Object.entries(K).map(([k, [n]]) => `<div class="zone bin" data-b="${k}"><b>${n}</b><div class="items"></div></div>`).join("")}</div></div>`;
     const src = G.$("#src");
     shuffle(it.t).forEach(([e, n, b, m]) => { const d = document.createElement("div"); d.className = "thing"; d.dataset.n = n; d.innerHTML = `<span class="te">${e}</span>${n}<span class="tm" hidden>${m}</span>`; src.appendChild(d);
       G.draggable(d, { onTap: () => G.sprich(n), onDrop: z => { if(!z || !z.dataset.b) return; G.ref.last = { n, b };
-        if(z.dataset.b === b){ z.querySelector(".items").appendChild(d); G.$$(".bin").forEach(x => x.classList.remove("glow")); G.klang("pop"); if(!src.querySelector(".thing")) G.solved(); } else G.miss(TONNEN[z.dataset.b][1]); } }); }); },
-  hint(r, it, G){ if(r === 1) return "Woraus ist das gemacht?";
-    if(r === 2){ G.$$(".tm").forEach(m => m.hidden = false); return "Unter jedem Ding steht jetzt, woraus es ist."; }
-    const l = G.ref.last; if(!l) return null; G.$$(".bin").forEach(x => x.classList.toggle("glow", x.dataset.b === l.b)); return `Für ${l.n} ist es die leuchtende Tonne. Zieh du es hinein.`; },
-  thanks: () => "Danke! Jetzt ist alles aufgeräumt.", praise: () => "Du hast bei jedem Ding überlegt, woraus es ist.",
+        if(z.dataset.b === b){ z.querySelector(".items").appendChild(d); G.$$(".bin").forEach(x => x.classList.remove("glow")); G.klang("pop"); if(!src.querySelector(".thing")) G.solved(); } else G.miss(K[z.dataset.b][1]); } }); }); },
+  hint(r, it, G){ if(r === 1) return it.h1 || "Woraus ist das gemacht?";
+    if(r === 2){ G.$$(".tm").forEach(m => m.hidden = false); return it.koerbe ? "Unter jedem Bild steht jetzt ein Tipp." : "Unter jedem Ding steht jetzt, woraus es ist."; }
+    const l = G.ref.last; if(!l) return null; G.$$(".bin").forEach(x => x.classList.toggle("glow", x.dataset.b === l.b)); return it.koerbe ? `„${l.n}“ gehört in den leuchtenden Korb. Zieh du es hinein.` : `Für ${l.n} ist es die leuchtende Tonne. Zieh du es hinein.`; },
+  thanks: it => it.dank || (it.koerbe ? "Danke! Jetzt ist alles richtig sortiert." : "Danke! Jetzt ist alles aufgeräumt."), praise: it => it.lob || "Du hast bei jedem Ding überlegt, woraus es ist.",
   probe: { falsch: (st, it) => sortiere(st, ".thing", ".bin", "b", d => it.t.find(x => x[1] === d.dataset.n)[2], true),
     richtig: (st, it) => sortiere(st, ".thing", ".bin", "b", d => it.t.find(x => x[1] === d.dataset.n)[2], false) } });
+
+// Was passt nicht dazu? (Ticket 35): vier Bildkarten, drei gehören zusammen. Hilfe: was die drei gemeinsam haben (tipp),
+// dann legt die Katze eine passende Karte weg; tippen muss Azra selbst.
+A.art({ id: "raus", fach: "hsu", titel: "Was passt nicht dazu?", klang: "pop",
+  en: { title: "Odd one out", does: "sees four picture cards and taps the one that does not belong with the other three." },
+  beispiel: [{ c: [["🐝", "Biene"], ["🦋", "Schmetterling"], ["🐞", "Marienkäfer"], ["🐟", "Fisch"]], x: 3, tipp: "Drei sind Insekten mit sechs Beinen." },
+    { c: [["🌧️", "Regen"], ["☀️", "Sonne"], ["❄️", "Schnee"], ["🧊", "Hagel"]], x: 1, tipp: "Drei fallen vom Himmel." }],
+  mount(st, it, G){ G.say("n", it.bitte || "Drei passen zusammen, eins nicht. Tipp auf das, was nicht dazupasst.");
+    st.innerHTML = `<div class="scene"><div class="row raus">${shuffle(it.c.map((c, i) => [...c, i])).map(([e, n, i]) => `<button class="opt bild rk" data-i="${i}">${e}<span>${n}</span></button>`).join("")}</div></div>`;
+    G.$$(".rk").forEach(b => b.onclick = () => { if(G.locked || b.disabled) return;
+      if(+b.dataset.i === it.x){ b.classList.add("x"); G.solved(); } else G.miss(`${it.c[+b.dataset.i][1]} passt gut zu den anderen.`); }); },
+  hint(r, it, G){ if(r === 1) return "Schau dir alle vier an. Was haben drei davon gemeinsam?";
+    if(r === 2) return it.tipp;
+    if(G.ref.weg) return "Drei Karten sind noch da. Welche passt nicht zu den anderen?"; // nur eine Karte weg, nie die Antwort
+    const weg = G.ref.weg = G.$$(".rk").find(b => +b.dataset.i !== it.x); weg.disabled = true; weg.classList.add("dim");
+    return "Das hier passt sicher dazu, ich lege es weg. Welche von den dreien passt nicht?"; },
+  praise: () => "Du hast überlegt, was drei gemeinsam haben.",
+  probe: { falsch: (st, it) => tippe(st.querySelector(`.rk:not([data-i="${it.x}"]):not([disabled])`)), richtig: (st, it) => tippe(st.querySelector(`.rk[data-i="${it.x}"]`)) } });
 
 A.art({ id: "beschriften", fach: "hsu", titel: "Bild beschriften", klang: "pop",
   en: { title: "Label a picture", does: "drags word cards to the right parts of a plant (blossom, leaf, stem, root)." },
@@ -846,9 +912,9 @@ A.art({ id: "reihenfolge", fach: "hsu", titel: "Bilder in die richtige Reihenfol
     src.classList.add("zone", "ablage");
     G.$("#go").onclick = () => { if(G.locked) return; const seq = G.$$(".slot").map(s => s.querySelector(".pcard")); if(seq.some(x => !x)) return G.say("n", "Leg erst alle vier Bilder hin.");
       seq.every((c, i) => +c.dataset.i === i) ? G.solved() : G.miss(`So erzählt es deine Reihe: ${seq.map(c => it.c[+c.dataset.i][1]).join(", ")}.`); }; },
-  hint(r, it, G){ if(r === 1) return "Was kommt ganz am Anfang?";
+  hint(r, it, G){ if(r === 1) return it.anfang || "Was kommt ganz am Anfang?";
     if(r === 2){ const s0 = G.$('.slot[data-s="0"]'), o = s0.querySelector(".pcard"), c = G.ref.cards[0]; if(o && o !== c) G.$("#src").appendChild(o); s0.appendChild(c); c.dataset.lock = 1; return `Am Anfang steht: ${it.c[0][1]}. Wie geht es weiter?`; }
     Object.values(G.ref.cards).forEach(c => { c.dataset.n = +c.dataset.i + 1; }); return "Die Zahlen zeigen dir die Reihenfolge. Leg du die Bilder hin."; },
-  praise: () => "Du hast dir überlegt, was zuerst passiert.",
+  praise: it => it.lob || "Du hast dir überlegt, was zuerst passiert.",
   probe: { falsch: st => ordne(st, [0, 2, 1, 3]), richtig: st => ordne(st, [0, 1, 2, 3]) } });
 })();
